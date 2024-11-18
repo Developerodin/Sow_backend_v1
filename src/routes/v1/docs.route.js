@@ -13,7 +13,6 @@ const specs = swaggerJsdoc({
 var options = {
   explorer: true,
   customCss: `.swagger-ui .topbar { display: none } 
-  .information-container { display: none }
   `,
  
 };

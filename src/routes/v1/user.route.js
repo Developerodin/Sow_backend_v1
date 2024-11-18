@@ -30,7 +30,7 @@ router
  * @swagger
  * /users:
  *   post:
- *     summary: Create a user
+ *     summary: Create a user 
  *     description: Only admins can create other users.
  *     tags: [Users]
  *     security:
