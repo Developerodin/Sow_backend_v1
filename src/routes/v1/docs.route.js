@@ -10,12 +10,18 @@ const specs = swaggerJsdoc({
   apis: ['src/docs/*.yml', 'src/routes/v1/*.js'],
 });
 
+var options = {
+  explorer: true,
+  customCss: `.swagger-ui .topbar { display: none } 
+  .information-container { display: none }
+  `,
+ 
+};
+
 router.use('/', swaggerUi.serve);
 router.get(
   '/',
-  swaggerUi.setup(specs, {
-    explorer: true,
-  })
+  swaggerUi.setup(specs, options)
 );
 
 export default router;
