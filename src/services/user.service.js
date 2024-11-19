@@ -81,12 +81,18 @@ const deleteUserById = async (userId) => {
   return user;
 };
 
+
+
+
+
+
 export {
   createUser,
   queryUsers,
   getUserById,
   getUserByEmail,
   updateUserById,
-  deleteUserById,
+  deleteUserById
+  
 };
 
