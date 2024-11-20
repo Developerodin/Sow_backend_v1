@@ -15,7 +15,7 @@ router.delete('/:userId', auth('manageUsers'), validate(userValidation.deleteUse
 
 // Address routes
 router.post('/addresses', userController.addB2BAddress);
-router.get('/addresses', userController.getB2BAllAddressesByUserId);
+router.get('/addresses/:userId', userController.getB2BAllAddressesByUserId);
 
 router.patch('/addresses/:addressId', userController.updateB2BAddress);
 router.delete('/addresses/:addressId', userController.deleteB2BAddress);
@@ -374,7 +374,7 @@ router.delete('/addresses/:addressId', userController.deleteB2BAddress);
  *     security:
  *       - bearerAuth: []
  *     parameters:
- *       - in: query
+ *       - in: path
  *         name: userId
  *         required: true
  *         schema:
