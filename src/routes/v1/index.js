@@ -5,6 +5,8 @@ import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
 import b2bRoute from './b2bUser.routes.js';
 import b2cRoute from './b2cUser.route.js';
+import categoryRoute from './category.routes.js';
+import subCategoryRoute from './subCategory.routes.js';
 
 const router = express.Router();
 
@@ -25,6 +27,14 @@ const defaultRoutes = [
     path: '/b2cUser',
     route: b2cRoute,
   }, 
+  {
+    path: '/categories',
+    route: categoryRoute,
+  }, 
+  {
+    path: '/subcategories',
+    route: subCategoryRoute,
+  },   
 ];
 
 const devRoutes = [
