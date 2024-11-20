@@ -3,6 +3,7 @@ import authRoute from './auth.route.js';
 import userRoute from './user.route.js';
 import docsRoute from './docs.route.js';
 import config from '../../config/config.js';
+import b2bRoute from './b2bUser.routes.js';
 
 const router = express.Router();
 
@@ -15,6 +16,10 @@ const defaultRoutes = [
     path: '/users',
     route: userRoute,
   },
+  {
+    path: '/b2bUser',
+    route: b2bRoute,
+  },  
 ];
 
 const devRoutes = [
