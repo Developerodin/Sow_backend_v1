@@ -4,7 +4,7 @@ const kycSchema = mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'B2bUser',
       required: true,
     },
     panNumber: {
@@ -29,11 +29,11 @@ const kycSchema = mongoose.Schema(
     },
     panImage: {
       type: String,
-      required: true, // Store the file path or URL of the uploaded PAN image
+      required: false, // Store the file path or URL of the uploaded PAN image
     },
     gstinImage: {
       type: String,
-      required: true, // Store the file path or URL of the uploaded GSTIN image
+      required: false, // Store the file path or URL of the uploaded GSTIN image
     },
     status: {
       type: String,

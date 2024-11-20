@@ -8,47 +8,61 @@ import {
   getB2BUser,
   updateB2BUser,
   deleteB2BUser,
+  updateB2BAddress,
+  deleteB2BAddress,
+  addB2BAddress,
+  deleteB2BKycDetails,
+  addB2BKycDetails,
+  getB2BAllAddressesByUserId,
+  getB2BKycDetailsByUserId,
+  updateB2BKycDetails,
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
 
 // Create a B2B user
-b2bRoute.post(
-  '/',
-  validate(b2bUserValidation.createB2BUser),
-  createB2BUser
-);
+b2bRoute.post('/', validate(b2bUserValidation.createB2BUser), createB2BUser);
 
 // Fetch all B2B users
-b2bRoute.get(
-  '/',
-  auth('getB2BUsers'),
-  validate(b2bUserValidation.getB2BUsers),
-  getB2BUsers
-);
+b2bRoute.get('/', auth('getB2BUsers'), validate(b2bUserValidation.getB2BUsers), getB2BUsers);
 
 // Fetch a B2B user by ID
-b2bRoute.get(
-  '/:userId',
-  validate(b2bUserValidation.getB2BUser),
-  getB2BUser
-);
+b2bRoute.get('/:userId', validate(b2bUserValidation.getB2BUser), getB2BUser);
 
 // Update a B2B user by ID
-b2bRoute.put(
-  '/:userId',
-  auth('manageB2BUsers'),
-  validate(b2bUserValidation.updateB2BUser),
-  updateB2BUser
-);
+b2bRoute.put('/:userId', auth('manageB2BUsers'), validate(b2bUserValidation.updateB2BUser), updateB2BUser);
 
 // Delete a B2B user by ID
+b2bRoute.delete('/:userId', validate(b2bUserValidation.deleteB2BUser), deleteB2BUser);
+
+// Add a B2B address
+b2bRoute.post('/address', addB2BAddress);
+
+// Delete a B2B address
 b2bRoute.delete(
-  '/:userId',
+  '/address/:addressId',
   auth('manageB2BUsers'),
-  validate(b2bUserValidation.deleteB2BUser),
-  deleteB2BUser
+  validate(b2bUserValidation.deleteB2BAddress),
+  deleteB2BAddress
 );
+
+// Update a B2B address
+b2bRoute.put('/address/:addressId', auth('manageB2BUsers'), validate(b2bUserValidation.updateB2BAddress), updateB2BAddress);
+
+// Add a B2B KYC details
+b2bRoute.post('/kyc', addB2BKycDetails);
+
+// Delete a B2B KYC details
+b2bRoute.delete('/kyc/:id', auth('manageB2BUsers'), validate(b2bUserValidation.deleteB2BKycDetails), deleteB2BKycDetails);
+
+// Update a B2B KYC details
+b2bRoute.put('/kyc/:id', auth('manageB2BUsers'), validate(b2bUserValidation.updateB2BKycDetails), updateB2BKycDetails);
+
+// Fetch all B2B addresses by user ID
+b2bRoute.get('/address/:userId', getB2BAllAddressesByUserId);
+
+// Fetch B2B KYC details by user ID
+b2bRoute.get('/kyc/:userId', getB2BKycDetailsByUserId);
 
 export default b2bRoute;
 
@@ -390,4 +404,459 @@ export default b2bRoute;
  *               message:
  *                 type: string
  *                 example: "Invalid input"
+ */
+
+// Address Section
+
+/**
+ * @swagger
+ * tags:
+ *   name: Addresses
+ *   description: Address management and retrieval
+ */
+
+/**
+ * @swagger
+ * /b2bUser/address:
+ *   post:
+ *     summary: Add a B2B address
+ *     description: Users can add a new B2B address to their account.
+ *     tags: [Addresses]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - latitude
+ *               - longitude
+ *               - googleAddress
+ *               - addressType
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user who owns the address
+ *               latitude:
+ *                 type: number
+ *                 description: Latitude of the address
+ *               longitude:
+ *                 type: number
+ *                 description: Longitude of the address
+ *               googleAddress:
+ *                 type: string
+ *                 description: Full address as provided by Google Maps
+ *               buildingName:
+ *                 type: string
+ *                 description: Name of the building (optional)
+ *               roadArea:
+ *                 type: string
+ *                 description: Road or area of the address (optional)
+ *               note:
+ *                 type: string
+ *                 description: Additional note for the address (optional)
+ *               addressType:
+ *                 type: string
+ *                 enum: ['Warehouse', 'Other']
+ *                 description: Type of the address (either Warehouse or Other)
+ *             example:
+ *               userId: 12345
+ *               latitude: 12.9716
+ *               longitude: 77.5946
+ *               googleAddress: "123 Main St, Springfield"
+ *               addressType: "Warehouse"
+ *     responses:
+ *       "201":
+ *         description: Created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   description: Address ID
+ *                 userId:
+ *                   type: string
+ *                   description: User ID
+ *                 latitude:
+ *                   type: number
+ *                 longitude:
+ *                   type: number
+ *                 googleAddress:
+ *                   type: string
+ *                 addressType:
+ *                   type: string
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *       "400":
+ *         description: Invalid input data
+ *       "401":
+ *         description: Unauthorized access
+ */
+
+/**
+ * @swagger
+ * /b2bUser/address/{userId}:
+ *   get:
+ *     summary: Get all B2B addresses by User ID
+ *     description: Retrieve all B2B addresses associated with a user.
+ *     tags: [Addresses]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the user whose addresses are to be retrieved
+ *     responses:
+ *       "200":
+ *         description: List of addresses for the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   userId:
+ *                     type: string
+ *                   latitude:
+ *                     type: number
+ *                   longitude:
+ *                     type: number
+ *                   googleAddress:
+ *                     type: string
+ *                   addressType:
+ *                     type: string
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *       "400":
+ *         description: Invalid user ID provided
+ *       "401":
+ *         description: Unauthorized access
+ */
+
+/**
+ * @swagger
+ * /b2bUser/address/{addressId}:
+ *   patch:
+ *     summary: Update a B2B address
+ *     description: Users can update an existing B2B address.
+ *     tags: [Addresses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: addressId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the address to be updated
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               latitude:
+ *                 type: number
+ *                 description: Latitude of the address
+ *               longitude:
+ *                 type: number
+ *                 description: Longitude of the address
+ *               googleAddress:
+ *                 type: string
+ *                 description: Full address as provided by Google Maps
+ *               buildingName:
+ *                 type: string
+ *                 description: Name of the building (optional)
+ *               roadArea:
+ *                 type: string
+ *                 description: Road or area of the address (optional)
+ *               note:
+ *                 type: string
+ *                 description: Additional note for the address (optional)
+ *               addressType:
+ *                 type: string
+ *                 enum: ['Warehouse', 'Other']
+ *                 description: Type of the address (either Warehouse or Other)
+ *             example:
+ *               latitude: 12.9726
+ *               longitude: 77.5936
+ *               googleAddress: "456 Elm St, Springfield"
+ *               addressType: "Other"
+ *     responses:
+ *       "200":
+ *         description: Updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 userId:
+ *                   type: string
+ *                 latitude:
+ *                   type: number
+ *                 longitude:
+ *                   type: number
+ *                 googleAddress:
+ *                   type: string
+ *                 addressType:
+ *                   type: string
+ *       "400":
+ *         description: Invalid input data
+ *       "401":
+ *         description: Unauthorized access
+ *       "404":
+ *         description: Address not found
+ */
+
+/**
+ * @swagger
+ * /b2bUser/address/{addressId}:
+ *   delete:
+ *     summary: Delete a B2B address
+ *     description: Users can delete an existing B2B address.
+ *     tags: [Addresses]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: addressId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the address to be deleted
+ *     responses:
+ *       "200":
+ *         description: Deleted successfully
+ *       "400":
+ *         description: Invalid address ID
+ *       "401":
+ *         description: Unauthorized access
+ *       "404":
+ *         description: Address not found
+ */
+
+// KYC Section
+
+/**
+ * @swagger
+ * tags:
+ *   name: KYC
+ *   description: KYC management and retrieval
+ */
+
+/**
+ * @swagger
+ * /b2bUser/kyc:
+ *   post:
+ *     summary: Add B2B KYC details
+ *     description: Users can add new KYC details to their account.
+ *     tags: [KYC]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - panNumber
+ *               - gstinNumber
+ *               - panImage
+ *               - gstinImage
+ *               - status
+ *               - remarks
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user who owns the KYC details
+ *               documentType:
+ *                 type: string
+ *                 description: Type of the document (e.g., Passport, Driver's License)
+ *               documentNumber:
+ *                 type: string
+ *                 description: Document number
+ *               documentFile:
+ *                 type: string
+ *                 format: binary
+ *                 description: File of the document
+ *             example:
+ *               userId: "12345"
+ *               panNumber: "ABCDE1234F"
+ *               gstinNumber: "29ABCDE1234F1Z2"
+ *               panImage: "base64encodedstring"
+ *               gstinImage: "base64encodedstring"
+ *               status: "pending"
+ *               remarks: "Pending verification"
+ *     responses:
+ *       "201":
+ *         description: Created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                   description: KYC ID
+ *                 userId:
+ *                   type: string
+ *                   description: User ID
+ *                 documentType:
+ *                   type: string
+ *                 documentNumber:
+ *                   type: string
+ *                 documentFile:
+ *                   type: string
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *       "400":
+ *         description: Invalid input data
+ *       "401":
+ *         description: Unauthorized access
+ */
+
+/**
+ * @swagger
+ * /b2bUser/kyc/{userId}:
+ *   get:
+ *     summary: Get B2B KYC details by User ID
+ *     description: Retrieve all KYC details associated with a user.
+ *     tags: [KYC]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the user whose KYC details are to be retrieved
+ *     responses:
+ *       "200":
+ *         description: List of KYC details for the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                   userId:
+ *                     type: string
+ *                   documentType:
+ *                     type: string
+ *                   documentNumber:
+ *                     type: string
+ *                   documentFile:
+ *                     type: string
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *       "400":
+ *         description: Invalid user ID provided
+ *       "401":
+ *         description: Unauthorized access
+ */
+
+/**
+ * @swagger
+ * /b2bUser/kyc/{id}:
+ *   put:
+ *     summary: Update B2B KYC details
+ *     description: Users can update existing KYC details.
+ *     tags: [KYC]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the KYC details to be updated
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               documentType:
+ *                 type: string
+ *                 description: Type of the document (e.g., Passport, Driver's License)
+ *               documentNumber:
+ *                 type: string
+ *                 description: Document number
+ *               documentFile:
+ *                 type: string
+ *                 format: binary
+ *                 description: File of the document
+ *             example:
+ *               documentType: "Driver's License"
+ *               documentNumber: "B9876543"
+ *               documentFile: "base64encodedstring"
+ *     responses:
+ *       "200":
+ *         description: Updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: string
+ *                 userId:
+ *                   type: string
+ *                 documentType:
+ *                   type: string
+ *                 documentNumber:
+ *                   type: string
+ *                 documentFile:
+ *                   type: string
+ *       "400":
+ *         description: Invalid input data
+ *       "401":
+ *         description: Unauthorized access
+ *       "404":
+ *         description: KYC details not found
+ */
+
+/**
+ * @swagger
+ * /b2bUser/kyc/{id}:
+ *   delete:
+ *     summary: Delete B2B KYC details
+ *     description: Users can delete existing KYC details.
+ *     tags: [KYC]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The ID of the KYC details to be deleted
+ *     responses:
+ *       "200":
+ *         description: Deleted successfully
+ *       "400":
+ *         description: Invalid KYC ID
+ *       "401":
+ *         description: Unauthorized access
+ *       "404":
+ *         description: KYC details not found
  */

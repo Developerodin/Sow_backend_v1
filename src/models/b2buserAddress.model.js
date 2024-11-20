@@ -4,7 +4,7 @@ const addressSchema = mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'User',
+      ref: 'B2bUser',
       required: true,
     },
     latitude: {

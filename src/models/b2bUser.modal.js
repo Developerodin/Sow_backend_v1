@@ -3,7 +3,6 @@ import validator from 'validator';
 import toJSON from './plugins/toJSON.plugin.js';
 import paginate from './plugins/paginate.plugin.js';
 
-
 const b2bUserSchema = mongoose.Schema(
   {
     name: {
