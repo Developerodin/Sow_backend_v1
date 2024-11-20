@@ -15,7 +15,6 @@ const b2bRoute = express.Router();
 // Create a B2B user
 b2bRoute.post(
   '/',
-  
   validate(b2bUserValidation.createB2BUser),
   createB2BUser
 );
@@ -31,7 +30,6 @@ b2bRoute.get(
 // Fetch a B2B user by ID
 b2bRoute.get(
   '/:userId',
-  auth('getB2BUsers'),
   validate(b2bUserValidation.getB2BUser),
   getB2BUser
 );
@@ -196,8 +194,6 @@ export default b2bRoute;
  *     summary: Get a B2B user by ID
  *     description: Logged in users can fetch only their own information. Only admins can fetch other users.
  *     tags: [B2BUser]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: userId
@@ -300,4 +296,98 @@ export default b2bRoute;
  *         $ref: '#/components/responses/Forbidden'
  *       "404":
  *         $ref: '#/components/responses/NotFound'
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     B2BUser:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: Unique identifier for the B2B user
+ *         phoneNumber:
+ *           type: string
+ *           description: Unique phone number of the B2B user
+ *         registerAs:
+ *           type: string
+ *           description: User type (e.g., wholesaler, retailer, etc.)
+ *         name:
+ *           type: string
+ *           description: Name of the user
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: Email address of the user
+ *         businessName:
+ *           type: string
+ *           description: Name of the business
+ *         category:
+ *           type: string
+ *           description: Business category
+ *         referralCode:
+ *           type: string
+ *           description: Referral code used for registration
+ *       example:
+ *         id: "1"
+ *         phoneNumber: "1234567890"
+ *         registerAs: "retailer"
+ *         name: "SoW"
+ *         email: "sow@example.com"
+ *         businessName: "Electronics"
+ *         category: "electronics"
+ *         referralCode: "SOW1234"
+ *   responses:
+ *     DuplicatePhoneNumber:
+ *       description: Phone number already exists
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Phone number already exists"
+ *     Unauthorized:
+ *       description: Unauthorized
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Unauthorized"
+ *     Forbidden:
+ *       description: Forbidden
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Forbidden"
+ *     NotFound:
+ *       description: Not Found
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Not Found"
+ *     InvalidInput:
+ *       description: Invalid input
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Invalid input"
  */
