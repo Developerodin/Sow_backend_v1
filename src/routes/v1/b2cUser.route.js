@@ -1,85 +1,62 @@
 import express from 'express';
 import auth from '../../middlewares/auth.js';
 import validate from '../../middlewares/validate.js';
-import * as b2bUserValidation from '../../validations/b2bUser.validation.js';
-import {
-  createB2BUser,
-  getB2BUsers,
-  getB2BUser,
-  updateB2BUser,
-  deleteB2BUser,
-  updateB2BAddress,
-  deleteB2BAddress,
-  addB2BAddress,
-  deleteB2BKycDetails,
-  addB2BKycDetails,
-  getB2BAllAddressesByUserId,
-  getB2BKycDetailsByUserId,
-  updateB2BKycDetails,
-} from '../../controllers/b2bUser.controller.js';
+import * as b2cUserController from '../../controllers/b2cUser.controller.js';
 
-const b2bRoute = express.Router();
 
-// Create a B2B user
-b2bRoute.post('/', validate(b2bUserValidation.createB2BUser), createB2BUser);
+const router = express.Router();
 
-// Fetch all B2B users
-b2bRoute.get('/', auth('getB2BUsers'), validate(b2bUserValidation.getB2BUsers), getB2BUsers);
+router.post('/', b2cUserController.createUser);
+router.get('/',  b2cUserController.getUsers);
 
-// Fetch a B2B user by ID
-b2bRoute.get('/:userId', validate(b2bUserValidation.getB2BUser), getB2BUser);
+router.get('/:userId', b2cUserController.getUser);
+router.patch('/:userId', b2cUserController.updateUser);
+router.delete('/:userId', b2cUserController.deleteUser);
 
-// Update a B2B user by ID
-b2bRoute.put('/:userId', auth('manageB2BUsers'), validate(b2bUserValidation.updateB2BUser), updateB2BUser);
-
-// Delete a B2B user by ID
-b2bRoute.delete('/:userId', validate(b2bUserValidation.deleteB2BUser), deleteB2BUser);
 
 // Add a B2B address
-b2bRoute.post('/address', addB2BAddress);
+router.post('/address', b2cUserController.addB2CAddress);
 
 // Delete a B2B address
-b2bRoute.delete(
+router.delete(
   '/address/:addressId',
-  auth('manageB2BUsers'),
-  validate(b2bUserValidation.deleteB2BAddress),
-  deleteB2BAddress
+  b2cUserController.deleteB2CAddress
 );
 
 // Update a B2B address
-b2bRoute.put('/address/:addressId', auth('manageB2BUsers'), validate(b2bUserValidation.updateB2BAddress), updateB2BAddress);
+router.put('/address/:addressId', b2cUserController.updateB2CAddress);
 
 // Add a B2B KYC details
-b2bRoute.post('/kyc', addB2BKycDetails);
+router.post('/kyc', b2cUserController.addB2CKycDetails);
 
 // Delete a B2B KYC details
-b2bRoute.delete('/kyc/:id', auth('manageB2BUsers'), validate(b2bUserValidation.deleteB2BKycDetails), deleteB2BKycDetails);
+router.delete('/kyc/:id', b2cUserController.deleteB2CKycDetails);
 
 // Update a B2B KYC details
-b2bRoute.put('/kyc/:id', auth('manageB2BUsers'), validate(b2bUserValidation.updateB2BKycDetails), updateB2BKycDetails);
+router.put('/kyc/:id', b2cUserController.updateB2CKycDetails);
 
 // Fetch all B2B addresses by user ID
-b2bRoute.get('/address/:userId', getB2BAllAddressesByUserId);
+router.get('/address/:userId', b2cUserController.getB2CAllAddressesByUserId);
 
 // Fetch B2B KYC details by user ID
-b2bRoute.get('/kyc/:userId', getB2BKycDetailsByUserId);
+router.get('/kyc/:userId', b2cUserController.getB2CKycDetailsByUserId);
 
-export default b2bRoute;
+export default router;
 
 /**
  * @swagger
  * tags:
- *   name: B2BUsers
- *   description: B2B User management and retrieval
+ *   name: B2CUsers
+ *   description: Manage B2C users
  */
 
 /**
  * @swagger
- * /b2bUser:
+ * /b2cUser:
  *   post:
- *     summary: Create a new B2B user
- *     description: Only admins can create B2B users.
- *     tags: [B2BUsers]
+ *     summary: Create a new B2C User
+ *     description: This endpoint allows admins to create a new B2C user.
+ *     tags: [B2CUsers]
  *     requestBody:
  *       required: true
  *       content:
@@ -87,93 +64,97 @@ export default b2bRoute;
  *           schema:
  *             type: object
  *             required:
+ *               - firstName
+ *               - lastName
  *               - phoneNumber
- *               - registerAs
- *               - name
+ *               - profileType
  *             properties:
+ *               firstName:
+ *                 type: string
+ *                 description: User's first name
+ *               lastName:
+ *                 type: string
+ *                 description: User's last name
  *               phoneNumber:
  *                 type: string
- *                 description: Unique phone number of the B2B user
- *               registerAs:
- *                 type: string
- *                 description: User type (e.g., wholesaler, retailer, etc.)
- *               name:
- *                 type: string
- *                 description: Name of the user
+ *                 description: User's unique phone number
  *               email:
  *                 type: string
  *                 format: email
- *                 description: Email address of the user
- *               businessName:
+ *                 description: User's email address (optional)
+ *               isKYCVerified:
+ *                 type: boolean
+ *                 description: Indicates if KYC is verified
+ *                 default: false
+ *               status:
  *                 type: string
- *                 description: Name of the business
- *               category:
+ *                 enum: [active, inactive]
+ *                 description: User's account status
+ *                 default: active
+ *               profileType:
  *                 type: string
- *                 description: Business category
+ *                 enum: [industry, office, shopkeeper]
+ *                 description: Type of user profile
  *               referralCode:
  *                 type: string
- *                 description: Referral code used for registration
+ *                 description: Optional referral code
  *             example:
- *               phoneNumber: "1234567890"
- *               registerAs: "retailer"
- *               name: "SoW"
- *               email: "sow@example.com"
- *               businessName: "Electronics"
- *               category: "electronics"
- *               referralCode: "SOW1234"
+ *               firstName: John
+ *               lastName: Doe
+ *               phoneNumber: +1234567890
+ *               email: johndoe@example.com
+ *               isKYCVerified: true
+ *               status: active
+ *               profileType: shopkeeper
+ *               referralCode: REF12345
  *     responses:
  *       "201":
- *         description: Created
+ *         description: B2C User created successfully
  *         content:
  *           application/json:
  *             schema:
- *                $ref: '#/components/schemas/B2BUser'
+ *               $ref: '#/components/schemas/B2CUser'
  *       "400":
- *         $ref: '#/components/responses/DuplicatePhoneNumber'
+ *         $ref: '#/components/responses/ValidationError'
  *       "401":
  *         $ref: '#/components/responses/Unauthorized'
  *       "403":
  *         $ref: '#/components/responses/Forbidden'
  *
  *   get:
- *     summary: Get all B2B users
- *     description: Only admins can retrieve all B2B users.
- *     tags: [B2BUsers]
- *     security:
- *       - bearerAuth: []
+ *     summary: Get all B2C Users
+ *     description: Retrieve all B2C users with filtering and pagination options.
+ *     tags: [B2CUsers]
  *     parameters:
  *       - in: query
- *         name: name
+ *         name: profileType
  *         schema:
  *           type: string
- *         description: User name
+ *           enum: [industry, office, shopkeeper]
+ *         description: Filter by user profile type
  *       - in: query
- *         name: category
+ *         name: status
  *         schema:
  *           type: string
- *         description: Business category
- *       - in: query
- *         name: sortBy
- *         schema:
- *           type: string
- *         description: sort by query in the form of field:desc/asc (e.g., name:asc)
+ *           enum: [active, inactive]
+ *         description: Filter by account status
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           minimum: 1
  *         default: 10
- *         description: Maximum number of users
+ *         description: Number of users to retrieve
  *       - in: query
  *         name: page
  *         schema:
  *           type: integer
  *           minimum: 1
- *           default: 1
+ *         default: 1
  *         description: Page number
  *     responses:
  *       "200":
- *         description: OK
+ *         description: List of B2C users successfully retrieved
  *         content:
  *           application/json:
  *             schema:
@@ -182,7 +163,7 @@ export default b2bRoute;
  *                 results:
  *                   type: array
  *                   items:
- *                     $ref: '#/components/schemas/B2BUser'
+ *                     $ref: '#/components/schemas/B2CUser'
  *                 page:
  *                   type: integer
  *                   example: 1
@@ -191,10 +172,10 @@ export default b2bRoute;
  *                   example: 10
  *                 totalPages:
  *                   type: integer
- *                   example: 1
+ *                   example: 3
  *                 totalResults:
  *                   type: integer
- *                   example: 1
+ *                   example: 25
  *       "401":
  *         $ref: '#/components/responses/Unauthorized'
  *       "403":
@@ -203,45 +184,108 @@ export default b2bRoute;
 
 /**
  * @swagger
- * /b2bUser/{userId}:
+ * components:
+ *   schemas:
+ *     B2CUser:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: Unique identifier for the user
+ *         firstName:
+ *           type: string
+ *           description: User's first name
+ *         lastName:
+ *           type: string
+ *           description: User's last name
+ *         phoneNumber:
+ *           type: string
+ *           description: User's phone number
+ *         email:
+ *           type: string
+ *           format: email
+ *           description: User's email address
+ *         isKYCVerified:
+ *           type: boolean
+ *           description: Indicates if the KYC is verified
+ *         status:
+ *           type: string
+ *           enum: [active, inactive]
+ *           description: User's account status
+ *         profileType:
+ *           type: string
+ *           enum: [industry, office, shopkeeper]
+ *           description: Type of user profile
+ *         referralCode:
+ *           type: string
+ *           description: Referral code associated with the user
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Timestamp when the user was created
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Timestamp when the user was last updated
+ *       example:
+ *         id: 64c84271d3f9b17b945eef19
+ *         firstName: Jane
+ *         lastName: Smith
+ *         phoneNumber: +9876543210
+ *         email: janesmith@example.com
+ *         isKYCVerified: false
+ *         status: active
+ *         profileType: office
+ *         referralCode: REF98765
+ */
+
+/**
+ * @swagger
+ * /b2cUser/{id}:
  *   get:
- *     summary: Get a B2B user by ID
- *     description: Logged in users can fetch only their own information. Only admins can fetch other users.
- *     tags: [B2BUsers]
+ *     summary: Get a B2C User by ID
+ *     description: This endpoint allows retrieving a B2C user by their unique ID.
+ *     tags: [B2CUsers]
  *     parameters:
  *       - in: path
- *         name: userId
+ *         name: id
  *         required: true
+ *         description: The unique identifier for the user.
  *         schema:
  *           type: string
- *         description: B2B user ID
+ *           example: 64c84271d3f9b17b945eef19
  *     responses:
  *       "200":
- *         description: OK
+ *         description: B2C User retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *                $ref: '#/components/schemas/B2BUser'
+ *               $ref: '#/components/schemas/B2CUser'
+ *       "400":
+ *         $ref: '#/components/responses/ValidationError'
  *       "401":
  *         $ref: '#/components/responses/Unauthorized'
  *       "403":
  *         $ref: '#/components/responses/Forbidden'
  *       "404":
- *         $ref: '#/components/responses/NotFound'
- *
+ *         description: User not found
+ */
+
+/**
+ * @swagger
+ * /b2cUser/{id}:
  *   put:
- *     summary: Update a B2B user
- *     description: Logged in users can only update their own information. Only admins can update other users.
- *     tags: [B2BUsers]
- *     security:
- *       - bearerAuth: []
+ *     summary: Update a B2C User by ID
+ *     description: This endpoint allows updating an existing B2C user by their unique ID.
+ *     tags: [B2CUsers]
  *     parameters:
  *       - in: path
- *         name: userId
+ *         name: id
  *         required: true
+ *         description: The unique identifier for the user.
  *         schema:
  *           type: string
- *         description: B2B user ID
+ *           example: 64c84271d3f9b17b945eef19
  *     requestBody:
  *       required: true
  *       content:
@@ -249,161 +293,95 @@ export default b2bRoute;
  *           schema:
  *             type: object
  *             properties:
+ *               firstName:
+ *                 type: string
+ *                 description: User's first name
+ *               lastName:
+ *                 type: string
+ *                 description: User's last name
  *               phoneNumber:
  *                 type: string
- *               registerAs:
- *                 type: string
- *               name:
- *                 type: string
+ *                 description: User's phone number
  *               email:
  *                 type: string
  *                 format: email
- *               businessName:
+ *                 description: User's email address
+ *               isKYCVerified:
+ *                 type: boolean
+ *                 description: Indicates if KYC is verified
+ *                 default: false
+ *               status:
  *                 type: string
- *               category:
+ *                 enum: [active, inactive]
+ *                 description: User's account status
+ *                 default: active
+ *               profileType:
  *                 type: string
+ *                 enum: [industry, office, shopkeeper]
+ *                 description: Type of user profile
  *               referralCode:
  *                 type: string
+ *                 description: Referral code associated with the user
  *             example:
- *               phoneNumber: "9876543210"
- *               registerAs: "wholesaler"
- *               name: "TheOdin"
- *               email: "TheOdin@example.com"
- *               businessName: "Odin's Wholesale"
- *               category: "iron"
- *               referralCode: "REF5678"
+ *               firstName: Jane
+ *               lastName: Smith
+ *               phoneNumber: +9876543210
+ *               email: janesmith@example.com
+ *               isKYCVerified: true
+ *               status: inactive
+ *               profileType: office
+ *               referralCode: REF98765
  *     responses:
  *       "200":
- *         description: OK
+ *         description: B2C User updated successfully
  *         content:
  *           application/json:
  *             schema:
- *                $ref: '#/components/schemas/B2BUser'
+ *               $ref: '#/components/schemas/B2CUser'
  *       "400":
- *         $ref: '#/components/responses/InvalidInput'
+ *         $ref: '#/components/responses/ValidationError'
  *       "401":
  *         $ref: '#/components/responses/Unauthorized'
  *       "403":
  *         $ref: '#/components/responses/Forbidden'
  *       "404":
- *         $ref: '#/components/responses/NotFound'
+ *         description: User not found
  *
  *   delete:
- *     summary: Delete a B2B user
- *     description: Logged in users can delete only themselves. Only admins can delete other users.
- *     tags: [B2BUsers]
+ *     summary: Delete a B2C User by ID
+ *     description: This endpoint allows deleting a B2C user by their unique ID.
+ *     tags: [B2CUsers]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: path
- *         name: userId
+ *         name: id
  *         required: true
+ *         description: The unique identifier for the user.
  *         schema:
  *           type: string
- *         description: B2B user ID
+ *           example: 64c84271d3f9b17b945eef19
  *     responses:
- *       "204":
- *         description: No content
+ *       "200":
+ *         description: B2C User deleted successfully
  *       "401":
  *         $ref: '#/components/responses/Unauthorized'
  *       "403":
  *         $ref: '#/components/responses/Forbidden'
  *       "404":
- *         $ref: '#/components/responses/NotFound'
+ *         description: User not found
  */
 
 /**
  * @swagger
  * components:
- *   schemas:
- *     B2BUser:
- *       type: object
- *       properties:
- *         id:
- *           type: string
- *           description: Unique identifier for the B2B user
- *         phoneNumber:
- *           type: string
- *           description: Unique phone number of the B2B user
- *         registerAs:
- *           type: string
- *           description: User type (e.g., wholesaler, retailer, etc.)
- *         name:
- *           type: string
- *           description: Name of the user
- *         email:
- *           type: string
- *           format: email
- *           description: Email address of the user
- *         businessName:
- *           type: string
- *           description: Name of the business
- *         category:
- *           type: string
- *           description: Business category
- *         referralCode:
- *           type: string
- *           description: Referral code used for registration
- *       example:
- *         id: "1"
- *         phoneNumber: "1234567890"
- *         registerAs: "retailer"
- *         name: "SoW"
- *         email: "sow@example.com"
- *         businessName: "Electronics"
- *         category: "electronics"
- *         referralCode: "SOW1234"
  *   responses:
- *     DuplicatePhoneNumber:
- *       description: Phone number already exists
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               message:
- *                 type: string
- *                 example: "Phone number already exists"
  *     Unauthorized:
- *       description: Unauthorized
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               message:
- *                 type: string
- *                 example: "Unauthorized"
+ *       description: Authentication is required or has failed
  *     Forbidden:
- *       description: Forbidden
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               message:
- *                 type: string
- *                 example: "Forbidden"
- *     NotFound:
- *       description: Not Found
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               message:
- *                 type: string
- *                 example: "Not Found"
- *     InvalidInput:
- *       description: Invalid input
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               message:
- *                 type: string
- *                 example: "Invalid input"
+ *       description: You do not have permission to perform this action
+ *     ValidationError:
+ *       description: Validation error occurred during request processing
  */
 
 // Address Section
@@ -411,17 +389,17 @@ export default b2bRoute;
 /**
  * @swagger
  * tags:
- *   name: B2B Address
- *   description: Address management and retrieval
+ *   name: B2C Address
+ *   description: Address management
  */
 
 /**
  * @swagger
- * /b2bUser/address:
+ * /b2cUser/address:
  *   post:
- *     summary: Add a B2B address
+ *     summary: Add a B2C address
  *     description: Users can add a new B2B address to their account.
- *     tags: [B2B Address]
+ *     tags: [B2C Address]
  *     requestBody:
  *       required: true
  *       content:
@@ -499,11 +477,11 @@ export default b2bRoute;
 
 /**
  * @swagger
- * /b2bUser/address/{userId}:
+ * /b2cUser/address/{userId}:
  *   get:
- *     summary: Get all B2B addresses by User ID
+ *     summary: Get all B2C addresses by User ID
  *     description: Retrieve all B2B addresses associated with a user.
- *     tags: [B2B Address]
+ *     tags: [B2C Address]
  *     parameters:
  *       - in: path
  *         name: userId
@@ -544,11 +522,11 @@ export default b2bRoute;
 
 /**
  * @swagger
- * /b2bUser/address/{addressId}:
+ * /b2cUser/address/{addressId}:
  *   patch:
- *     summary: Update a B2B address
+ *     summary: Update a B2C address
  *     description: Users can update an existing B2B address.
- *     tags: [B2B Address]
+ *     tags: [B2C Address]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -622,11 +600,11 @@ export default b2bRoute;
 
 /**
  * @swagger
- * /b2bUser/address/{addressId}:
+ * /b2cUser/address/{addressId}:
  *   delete:
- *     summary: Delete a B2B address
+ *     summary: Delete a B2C address
  *     description: Users can delete an existing B2B address.
- *     tags: [B2B Address]
+ *     tags: [B2C Address]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -652,17 +630,17 @@ export default b2bRoute;
 /**
  * @swagger
  * tags:
- *   name: B2B KYC
+ *   name: B2C KYC
  *   description: KYC management and retrieval
  */
 
 /**
  * @swagger
- * /b2bUser/kyc:
+ * /b2cUser/kyc:
  *   post:
- *     summary: Add B2B KYC details
+ *     summary: Add B2C KYC details
  *     description: Users can add new KYC details to their account.
- *     tags: [B2B KYC]
+ *     tags: [B2C KYC]
  *     requestBody:
  *       required: true
  *       content:
@@ -730,11 +708,11 @@ export default b2bRoute;
 
 /**
  * @swagger
- * /b2bUser/kyc/{userId}:
+ * /b2cUser/kyc/{userId}:
  *   get:
- *     summary: Get B2B KYC details by User ID
+ *     summary: Get B2C KYC details by User ID
  *     description: Retrieve all KYC details associated with a user.
- *     tags: [B2B KYC]
+ *     tags: [B2C KYC]
  *     parameters:
  *       - in: path
  *         name: userId
@@ -773,11 +751,11 @@ export default b2bRoute;
 
 /**
  * @swagger
- * /b2bUser/kyc/{id}:
+ * /b2cUser/kyc/{id}:
  *   put:
- *     summary: Update B2B KYC details
+ *     summary: Update B2C KYC details
  *     description: Users can update existing KYC details.
- *     tags: [B2B KYC]
+ *     tags: [B2C KYC]
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -836,11 +814,11 @@ export default b2bRoute;
 
 /**
  * @swagger
- * /b2bUser/kyc/{id}:
+ * /b2cUser/kyc/{id}:
  *   delete:
- *     summary: Delete B2B KYC details
+ *     summary: Delete B2C KYC details
  *     description: Users can delete existing KYC details.
- *     tags: [B2B KYC]
+ *     tags: [B2C KYC]
  *     security:
  *       - bearerAuth: []
  *     parameters:

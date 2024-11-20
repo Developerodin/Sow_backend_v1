@@ -4,7 +4,7 @@ const addressSchema = mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'B2BUser',
+      ref: 'B2CUser',
       required: true,
     },
     latitude: {
@@ -46,6 +46,6 @@ const addressSchema = mongoose.Schema(
 // /**
 //  * @typedef Address
 //  */
-const B2BAddress = mongoose.model('B2BAddress', addressSchema);
+const B2CAddress = mongoose.model('B2CAddress', addressSchema);
 
-export default B2BAddress;
+export default B2CAddress;

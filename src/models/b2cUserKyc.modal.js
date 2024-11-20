@@ -4,7 +4,7 @@ const kycSchema = mongoose.Schema(
   {
     userId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'B2BUser',
+      ref: 'B2CUser',
       required: true,
     },
     panNumber: {
@@ -52,6 +52,6 @@ const kycSchema = mongoose.Schema(
 // /**
 //  * @typedef KYC
 //  */
-const B2BKYC = mongoose.model('B2BKYC', kycSchema);
+const B2CKYC = mongoose.model('B2CKYC', kycSchema);
 
-export default B2BKYC;
+export default B2CKYC;

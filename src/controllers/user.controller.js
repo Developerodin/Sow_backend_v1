@@ -3,8 +3,6 @@ import pick from '../utils/pick.js';
 import ApiError from '../utils/ApiError.js';
 import catchAsync from '../utils/catchAsync.js';
 import * as userService  from '../services/user.service.js';
-import B2BAddress from '../models/b2buserAddress.model.js';
-import B2BKYC from '../models/b2buserKyc.model.js';
 
 
 const createUser = catchAsync(async (req, res) => {
