@@ -14,16 +14,17 @@ const orderSchema = mongoose.Schema(
         },
         orderBy :{
             type: mongoose.Schema.Types.ObjectId,
-            ref :'B2Buser',
+            ref :'B2BUser',
             required : true,  
         },
         orderTo : {
             type: mongoose.Schema.Types.ObjectId,
-            ref : 'B2Buser',
+            ref : 'B2BUser',
             required : true,
         },
         location :{
-            type : String,
+            type : mongoose.Schema.Types.ObjectId,
+            ref : 'B2BAddress',
             required : true,
         },
         subCategory: {

@@ -49,6 +49,7 @@ const b2bUserSchema = mongoose.Schema(
     },
     registerAs: {
       type: String,
+      enum : ["Retailer", "Wholesaler", "Mediator","Factory"],
       required: true,
     },
     isKYCVerified: {
