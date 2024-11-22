@@ -19,7 +19,7 @@ const orderSchema = mongoose.Schema(
         },
         orderTo : {
             type: mongoose.Schema.Types.ObjectId,
-            ref : 'B2CUser',
+            ref : 'B2Buser',
             required : true,
         },
         location :{
