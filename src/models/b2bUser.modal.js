@@ -3,6 +3,59 @@ import validator from 'validator';
 import toJSON from './plugins/toJSON.plugin.js';
 import paginate from './plugins/paginate.plugin.js';
 
+const subCategorySchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: false,
+  },
+  price: {
+    type: String,
+    required: false,
+  },
+  unit: {
+    type: String,
+    required: false,
+  },
+  status: {
+    type: String,
+    enum: ['active', 'inactive'],
+    default: 'active',
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  },
+  history: [
+    {
+      price: String,
+      unit: String,
+      status: {
+        type: String,
+        enum: ['active', 'inactive'],
+      },
+      updatedAt: {
+        type: Date,
+        default: Date.now,
+      },
+    },
+  ],
+});
+
+const categorySchema = new mongoose.Schema({
+  name: {
+      type: String,
+      required: false,
+  },
+  sub_category: [subCategorySchema],
+  updatedAt: {
+      type: Date,
+      default: Date.now,
+  },
+});
+
+
+
+
 const b2bUserSchema = mongoose.Schema(
   {
     name: {

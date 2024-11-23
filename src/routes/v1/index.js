@@ -9,6 +9,7 @@ import categoryRoute from './category.routes.js';
 import subCategoryRoute from './subCategory.routes.js';
 import B2bOrderRoute from './b2bOrder.routes.js';
 import B2cOrderRoute from './b2cOrder.routes.js';
+import QuotationRoute from './quotation.routes.js ';
 
 const router = express.Router();
 
@@ -44,7 +45,11 @@ const defaultRoutes = [
   {
     path : '/b2cOrder',
     route : B2cOrderRoute,
-  }
+  },
+  {
+    path : '/quotations',
+    route : QuotationRoute,
+  },
 ];
 
 const devRoutes = [
