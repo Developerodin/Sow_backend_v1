@@ -7,6 +7,7 @@ import B2BAddress from '../models/b2buserAddress.model.js';
 import B2BKYC from '../models/b2buserKyc.model.js';
 import B2BUser from '../models/b2bUser.modal.js';
 import axios from "axios";
+import generateToken from '../utils/jwt.js';
 
 
 const sendOtpSMS = async (mobileNumber, otp) => {
@@ -80,7 +81,7 @@ const generateOTPController = async (req, res) => {
 };
 
 const loginWithOTPController = async (req, res) => {
-  const { phoneNumber, otp } = req.body; // Corrected key
+  const { phoneNumber, otp } = req.body;
 
   try {
     // Check if the user with the provided phone number exists
@@ -99,12 +100,13 @@ const loginWithOTPController = async (req, res) => {
     user.otp = undefined;
     await user.save();
 
-    // Optionally, you may generate a JWT token for authentication
-    // and send it back to the client
+    // Generate JWT token
+    const token = generateToken(user._id);
 
     res.status(200).json({
       message: 'Login successful',
-      data: user,
+      token,
+      user,
     });
   } catch (error) {
     console.error(error);

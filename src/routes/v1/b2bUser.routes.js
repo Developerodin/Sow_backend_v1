@@ -449,6 +449,8 @@ export default b2bRoute;
  *     summary: Add a B2B address
  *     description: Users can add a new B2B address to their account.
  *     tags: [B2B Address]
+ *     security:
+ *      - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
