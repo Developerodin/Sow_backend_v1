@@ -90,11 +90,7 @@ const b2bUserSchema = mongoose.Schema(
       required: false,
       trim: true,
     },
-    category: {
-      type: String,
-      required: false,
-      trim: true,
-    },
+    category: [categorySchema],
     referralCode: {
       type: String,
       required: false,

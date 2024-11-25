@@ -5,6 +5,7 @@ import catchAsync from '../utils/catchAsync.js';
 import * as b2bUserService from '../services/b2bUser.service.js';
 import B2BAddress from '../models/b2buserAddress.model.js';
 import B2BKYC from '../models/b2buserKyc.model.js';
+import B2BUser from '../models/b2bUser.modal.js';
 
 /**
  * Create a new B2B user
@@ -198,6 +199,210 @@ const addB2BKycDetails = async (req, res) => {
   }
 };
 
+// category 
+
+const createCategory = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name } = req.body;
+
+    const user = await B2BUser.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    user.category.push({ name });
+    await user.save();
+
+    res.status(201).json(user.category);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get all categories for a B2B user
+const getAllCategories = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await B2BUser.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json(user.category);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get a category by ID for a B2B user
+const getCategoryById = async (req, res) => {
+  try {
+    const { userId, categoryId } = req.params;
+
+    const user = await B2BUser.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const category = user.category.id(categoryId);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    res.status(200).json(category);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+const updateCategory = async (req, res) => {
+  try {
+    const { userId, categoryId } = req.params;
+    const { name } = req.body;
+
+    const user = await B2BUser.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const category = user.category.id(categoryId);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    category.name = name;
+    category.updatedAt = Date.now();
+
+    await user.save();
+    res.status(200).json(category);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+const deleteCategory = async (req, res) => {
+  try {
+    const { userId, categoryId } = req.params;
+
+    const user = await B2BUser.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const category = user.category.id(categoryId);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    category.remove();
+    await user.save();
+    res.status(204).json({ message: 'Category deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+const addSubCategory = async (req, res) => {
+  try {
+    const { userId, categoryId } = req.params;
+    const { name, price, unit } = req.body;
+
+    const user = await B2BUser.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const category = user.category.id(categoryId);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    category.sub_category.push({ name, price, unit });
+    await user.save();
+
+    res.status(201).json(category.sub_category);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+const updateSubCategory = async (req, res) => {
+  try {
+    const { userId, categoryId, subCategoryId } = req.params;
+    const { name, price, unit } = req.body;
+
+    const user = await B2BUser.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const category = user.category.id(categoryId);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    const subCategory = category.sub_category.id(subCategoryId);
+    if (!subCategory) {
+      return res.status(404).json({ message: 'Subcategory not found' });
+    }
+
+   
+    subCategory.history.push({
+      price: subCategory.price,
+      unit: subCategory.unit,
+      status: 'inactive',
+      updatedAt: subCategory.updatedAt,
+    });
+
+    
+    subCategory.name = name;
+    subCategory.price = price;
+    subCategory.unit = unit;
+    subCategory.status = 'active';
+    subCategory.updatedAt = Date.now();
+
+    await user.save();
+    res.status(200).json(subCategory);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Delete a subcategory by ID for a B2B user
+const deleteSubCategory = async (req, res) => {
+  try {
+    const { userId, categoryId, subCategoryId } = req.params;
+
+    const user = await B2BUser.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const category = user.category.id(categoryId);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    const subCategory = category.sub_category.id(subCategoryId);
+    if (!subCategory) {
+      return res.status(404).json({ message: 'Subcategory not found' });
+    }
+
+    subCategory.remove();
+    await user.save();
+    res.status(204).json({ message: 'Subcategory deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
 export {
   createB2BUser,
   getB2BUsers,
@@ -212,4 +417,12 @@ export {
   getB2BAllAddressesByUserId,
   getB2BKycDetailsByUserId,
   updateB2BKycDetails,
+  createCategory,
+  getAllCategories,
+  getCategoryById,
+  updateCategory,
+  deleteCategory,
+  addSubCategory,
+  updateSubCategory,
+  deleteSubCategory,
 };

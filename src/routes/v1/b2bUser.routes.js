@@ -16,6 +16,14 @@ import {
   getB2BAllAddressesByUserId,
   getB2BKycDetailsByUserId,
   updateB2BKycDetails,
+  createCategory,
+  getAllCategories,
+  getCategoryById,
+  updateCategory,
+  deleteCategory,
+  addSubCategory,
+  updateSubCategory,
+  deleteSubCategory,
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
@@ -63,6 +71,18 @@ b2bRoute.get('/address/:userId', getB2BAllAddressesByUserId);
 
 // Fetch B2B KYC details by user ID
 b2bRoute.get('/kyc/:userId', getB2BKycDetailsByUserId);
+
+// Category routes
+b2bRoute.post('/:userId/category', createCategory);
+b2bRoute.get('/:userId/category', getAllCategories);
+b2bRoute.get('/:userId/category/:categoryId', getCategoryById);
+b2bRoute.put('/:userId/category/:categoryId', updateCategory);
+b2bRoute.delete('/:userId/category/:categoryId', deleteCategory);
+
+// Subcategory routes
+b2bRoute.post('/:userId/category/:categoryId/subcategory', addSubCategory);
+b2bRoute.put('/:userId/category/:categoryId/subcategory/:subCategoryId', updateSubCategory);
+b2bRoute.delete('/:userId/category/:categoryId/subcategory/:subCategoryId', deleteSubCategory);
 
 export default b2bRoute;
 
@@ -860,3 +880,432 @@ export default b2bRoute;
  *       "404":
  *         description: KYC details not found
  */
+
+
+/**
+ * @swagger
+ * tags:
+ *   name: B2B Categories
+ *   description: Category management and retrieval
+ */
+
+/**
+ * @swagger
+ * /b2bUser/{userId}/category:
+ *   post:
+ *     summary: Create a new category for a B2B user
+ *     description: Allows users to create a new category.
+ *     tags: [B2B Categories]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the B2B user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Name of the category
+ *             example:
+ *               name: "Electronics"
+ *     responses:
+ *       "201":
+ *         description: Category created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+
+/**
+ * @swagger
+ * /b2bUser/{userId}/category:
+ *   get:
+ *     summary: Get all categories for a B2B user
+ *     description: Retrieve all categories for a specific B2B user.
+ *     tags: [B2B Categories]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the B2B user
+ *     responses:
+ *       "200":
+ *         description: List of categories
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Category'
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+
+/**
+ * @swagger
+ * /b2bUser/{userId}/category/{categoryId}:
+ *   get:
+ *     summary: Get a category by ID for a B2B user
+ *     description: Retrieve a category by its ID for a specific B2B user.
+ *     tags: [B2B Categories]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the B2B user
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the category
+ *     responses:
+ *       "200":
+ *         description: Category details retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ */
+
+/**
+ * @swagger
+ * /b2bUser/{userId}/category/{categoryId}:
+ *   put:
+ *     summary: Update a category by ID for a B2B user
+ *     description: Update a category by its ID for a specific B2B user.
+ *     tags: [B2B Categories]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the B2B user
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the category
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Name of the category
+ *             example:
+ *               name: "Updated Electronics"
+ *     responses:
+ *       "200":
+ *         description: Category updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Category'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ */
+
+/**
+ * @swagger
+ * /b2bUser/{userId}/category/{categoryId}:
+ *   delete:
+ *     summary: Delete a category by ID for a B2B user
+ *     description: Delete a category by its ID for a specific B2B user.
+ *     tags: [B2B Categories]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the B2B user
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the category
+ *     responses:
+ *       "204":
+ *         description: Category deleted successfully
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ */
+
+/**
+ * @swagger
+ * tags:
+ *   name: B2B Subcategories
+ *   description: Subcategory management and retrieval
+ */
+
+/**
+ * @swagger
+ * /b2bUser/{userId}/category/{categoryId}/subcategory:
+ *   post:
+ *     summary: Add a subcategory to a category for a B2B user
+ *     description: Allows users to add a subcategory to a category.
+ *     tags: [B2B Subcategories]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the B2B user
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the category
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - price
+ *               - unit
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Name of the subcategory
+ *               price:
+ *                 type: string
+ *                 description: Price of the subcategory
+ *               unit:
+ *                 type: string
+ *                 description: Unit of the subcategory
+ *             example:
+ *               name: "Mobile Phones"
+ *               price: "500"
+ *               unit: "pieces"
+ *     responses:
+ *       "201":
+ *         description: Subcategory added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Subcategory'
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+
+/**
+ * @swagger
+ * /b2bUser/{userId}/category/{categoryId}/subcategory/{subCategoryId}:
+ *   put:
+ *     summary: Update a subcategory by ID for a B2B user
+ *     description: Update a subcategory by its ID for a specific B2B user.
+ *     tags: [B2B Subcategories]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the B2B user
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the category
+ *       - in: path
+ *         name: subCategoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the subcategory
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Name of the subcategory
+ *               price:
+ *                 type: string
+ *                 description: Price of the subcategory
+ *               unit:
+ *                 type: string
+ *                 description: Unit of the subcategory
+ *             example:
+ *               name: "Updated Mobile Phones"
+ *               price: "600"
+ *               unit: "pieces"
+ *     responses:
+ *       "200":
+ *         description: Subcategory updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Subcategory'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ */
+
+/**
+ * @swagger
+ * /b2bUser/{userId}/category/{categoryId}/subcategory/{subCategoryId}:
+ *   delete:
+ *     summary: Delete a subcategory by ID for a B2B user
+ *     description: Delete a subcategory by its ID for a specific B2B user.
+ *     tags: [B2B Subcategories]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the B2B user
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the category
+ *       - in: path
+ *         name: subCategoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the subcategory
+ *     responses:
+ *       "204":
+ *         description: Subcategory deleted successfully
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Category:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: Unique identifier for the category
+ *         name:
+ *           type: string
+ *           description: Name of the category
+ *         sub_category:
+ *           type: array
+ *           items:
+ *             $ref: '#/components/schemas/Subcategory'
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date and time when the category was last updated
+ *       example:
+ *         id: "63b8e5b934e3e3f7d4a1c6f4"
+ *         name: "Electronics"
+ *         sub_category:
+ *           - id: "63b8e5b934e3e3f7d4a1c6f5"
+ *             name: "Mobile Phones"
+ *             price: "500"
+ *             unit: "pieces"
+ *             status: "active"
+ *             updatedAt: "2024-11-22T10:30:00Z"
+ *         updatedAt: "2024-11-22T10:30:00Z"
+ *     Subcategory:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: Unique identifier for the subcategory
+ *         name:
+ *           type: string
+ *           description: Name of the subcategory
+ *         price:
+ *           type: string
+ *           description: Price of the subcategory
+ *         unit:
+ *           type: string
+ *           description: Unit of the subcategory
+ *         status:
+ *           type: string
+ *           enum:
+ *             - active
+ *             - inactive
+ *           description: Status of the subcategory
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: The date and time when the subcategory was last updated
+ *       example:
+ *         id: "63b8e5b934e3e3f7d4a1c6f5"
+ *         name: "Mobile Phones"
+ *         price: "500"
+ *         unit: "pieces"
+ *         status: "active"
+ *         updatedAt: "2024-11-22T10:30:00Z"
+ *   responses:
+ *     InvalidInput:
+ *       description: Invalid input
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Invalid input"
+ *     Unauthorized:
+ *       description: Unauthorized access
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Unauthorized"
+ *     NotFound:
+ *       description: Resource not found
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Resource not found"
+ */
+
