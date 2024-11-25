@@ -1,6 +1,4 @@
-import packageJson from '../../package.json' assert { type: 'json' };
 
-const { version } = packageJson;
 import config from '../config/config.js';
 
 
@@ -8,7 +6,7 @@ const swaggerDef = {
   openapi: '3.0.0',
   info: {
     title: 'Scrap on wheels apis',
-    version,
+    version:"1.0.0"
   },
   servers: [
     {
