@@ -24,9 +24,16 @@ import {
   addSubCategory,
   updateSubCategory,
   deleteSubCategory,
+  generateOTPController,
+  loginWithOTPController,
+
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
+
+// OTP routes
+b2bRoute.post('/generateOTP', generateOTPController);
+b2bRoute.post('/loginWithOTP', loginWithOTPController);
 
 // Create a B2B user
 b2bRoute.post('/', validate(b2bUserValidation.createB2BUser), createB2BUser);
@@ -1307,5 +1314,88 @@ export default b2bRoute;
  *               message:
  *                 type: string
  *                 example: "Resource not found"
+ */
+
+/**
+ * @swagger
+ * /b2bUser/generateOTP:
+ *   post:
+ *     summary: Generate OTP
+ *     description: Allows users to generate an OTP using their phone number.
+ *     tags: [B2BUsers]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - phoneNumber
+ *             properties:
+ *               phoneNumber:
+ *                 type: string
+ *                 description: Phone number to generate OTP
+ *             example:
+ *               phoneNumber: "1234567890"
+ *     responses:
+ *       "200":
+ *         description: OTP generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "OTP sent successfully"
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+
+/**
+ * @swagger
+ * /b2bUser/loginWithOTP:
+ *   post:
+ *     summary: Login with OTP
+ *     description: Allows users to login using their phone number and OTP.
+ *     tags: [B2BUsers]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - phoneNumber
+ *               - otp
+ *             properties:
+ *               phoneNumber:
+ *                 type: string
+ *                 description: Phone number used to generate OTP
+ *               otp:
+ *                 type: string
+ *                 description: OTP received by the user
+ *             example:
+ *               phoneNumber: "1234567890"
+ *               otp: "123456"
+ *     responses:
+ *       "200":
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   description: JWT token
+ *                 user:
+ *                   $ref: '#/components/schemas/B2BUser'
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
  */
 
