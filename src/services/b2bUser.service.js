@@ -8,6 +8,15 @@ import httpStatus from 'http-status';
  * @returns {Promise<B2BUser>}
  */
 const createB2BUser = async (userBody) => {
+  if (Array.isArray(userBody.category)) {
+    // Normalize the category to be an array of objects
+    userBody.category = userBody.category.map((cat) =>
+      typeof cat === 'string' ? { name: cat } : cat
+    );
+  } else {
+    throw new ApiError(httpStatus.BAD_REQUEST, 'Category must be an array');
+  }
+
   if (await B2BUser.isPhoneNumberTaken(userBody.phoneNumber)) {
     throw new ApiError(httpStatus.BAD_REQUEST, 'Phone number already registered');
   }
