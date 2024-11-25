@@ -128,7 +128,7 @@ export default b2bRoute;
  *                 type: string
  *                 description: Name of the business
  *               category:
- *                 type: string
+ *                 type: array
  *                 description: Business category
  *               referralCode:
  *                 type: string
@@ -139,7 +139,7 @@ export default b2bRoute;
  *               name: "SoW"
  *               email: "sow@example.com"
  *               businessName: "Electronics"
- *               category: "electronics"
+ *               category: [{ "name": "Iron" }]
  *               referralCode: "SOW1234"
  *     responses:
  *       "201":

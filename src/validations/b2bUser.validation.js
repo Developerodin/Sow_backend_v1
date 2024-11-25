@@ -8,7 +8,13 @@ const createB2BUser = {
     name: Joi.string().required(),
     email: Joi.string().email(),
     businessName: Joi.string(),
-    category: Joi.string(),
+    category: Joi.array()
+  .items(
+    Joi.object({
+      name: Joi.string().required(),
+    })
+  )
+  .required(),
     referralCode: Joi.string(),
   }),
 };
