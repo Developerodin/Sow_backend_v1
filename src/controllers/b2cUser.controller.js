@@ -2,7 +2,7 @@ import httpStatus from 'http-status';
 import catchAsync from '../utils/catchAsync.js';
 import * as b2cUserService from '../services/b2cUser.service.js';
 import B2CAddress from '../models/b2cuserAddress.modal.js';
-import B2CKYC from '../models/b2cuserKyc.modal.js';
+import B2CKYC from '../models/b2cUserKyc.modal.js';
 
 /**
  * Create a B2C user
