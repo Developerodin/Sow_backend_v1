@@ -11,7 +11,11 @@ const swaggerDef = {
   servers: [
     {
       url: `https://sow-backend-v1.onrender.com/v1`,
-      // url: `http://localhost:${config.port}/v1`,
+     
+    },
+    {
+       url: `http://localhost:${config.port}/v1`,
+     
     },
   ],
 };
