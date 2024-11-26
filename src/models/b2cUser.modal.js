@@ -45,6 +45,11 @@ const b2cUserSchema = mongoose.Schema(
       type: String,
       default: 'active',
     },
+    otp: {
+      type: String,
+      required: false,
+      trim: true,
+    },
     profileType: {
       type: String,
       required: true,

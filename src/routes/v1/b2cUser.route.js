@@ -5,6 +5,8 @@ import * as b2cUserController from '../../controllers/b2cUser.controller.js';
 
 
 const router = express.Router();
+router.post('/generateOTP', b2cUserController.generateOTPController);
+router.post('/loginWithOTP', b2cUserController.loginWithOTPController);
 
 router.post('/', b2cUserController.createUser);
 router.get('/',  b2cUserController.getUsers);
@@ -837,4 +839,88 @@ export default router;
  *         description: Unauthorized access
  *       "404":
  *         description: KYC details not found
+ */
+
+
+/**
+ * @swagger
+ * /b2cUser/generateOTP:
+ *   post:
+ *     summary: Generate OTP
+ *     description: Allows users to generate an OTP using their phone number.
+ *     tags: [B2CUsers]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - phoneNumber
+ *             properties:
+ *               phoneNumber:
+ *                 type: string
+ *                 description: Phone number to generate OTP
+ *             example:
+ *               phoneNumber: "1234567890"
+ *     responses:
+ *       "200":
+ *         description: OTP generated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "OTP sent successfully"
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ */
+
+/**
+ * @swagger
+ * /b2cUser/loginWithOTP:
+ *   post:
+ *     summary: Login with OTP
+ *     description: Allows users to login using their phone number and OTP.
+ *     tags: [B2CUsers]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - phoneNumber
+ *               - otp
+ *             properties:
+ *               phoneNumber:
+ *                 type: string
+ *                 description: Phone number used to generate OTP
+ *               otp:
+ *                 type: string
+ *                 description: OTP received by the user
+ *             example:
+ *               phoneNumber: "1234567890"
+ *               otp: "123456"
+ *     responses:
+ *       "200":
+ *         description: Login successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   description: JWT token
+ *                 user:
+ *                   $ref: '#/components/schemas/B2BUser'
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
  */
