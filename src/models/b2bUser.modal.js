@@ -101,6 +101,18 @@ const b2bUserSchema = mongoose.Schema(
       required: false,
       trim: true,
     },
+    notificationToken: {
+      type: String,
+      default: "",
+    },
+    active: {
+      type: Boolean,
+       default: false,
+    },
+    status: {
+      type: Boolean,
+      default: false,
+    },
     registerAs: {
       type: String,
       enum : ["Retailer", "Wholesaler", "Mediator","Factory"],

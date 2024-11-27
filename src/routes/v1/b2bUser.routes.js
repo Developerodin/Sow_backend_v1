@@ -26,6 +26,8 @@ import {
   deleteSubCategory,
   generateOTPController,
   loginWithOTPController,
+  updateUserStatus,
+  updateNotificationToken,
 
 } from '../../controllers/b2bUser.controller.js';
 
@@ -34,6 +36,12 @@ const b2bRoute = express.Router();
 // OTP routes
 b2bRoute.post('/generateOTP', generateOTPController);
 b2bRoute.post('/loginWithOTP', loginWithOTPController);
+
+// Update user status
+b2bRoute.patch('/updateStatus/:userId', updateUserStatus);
+
+// Update notification token
+b2bRoute.post('/:userId/update-token', updateNotificationToken);
 
 // Create a B2B user
 b2bRoute.post('/', validate(b2bUserValidation.createB2BUser), createB2BUser);
@@ -1400,4 +1408,97 @@ export default b2bRoute;
  *       "401":
  *         $ref: '#/components/responses/Unauthorized'
  */
+
+
+/**
+ * @swagger
+ * /b2bUser/updateStatus/{userId}:
+ *   patch:
+ *     summary: Update user status
+ *     description: Allows users to update their status.
+ *     tags: [B2BUsers]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the B2B user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - status
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [active, inactive]
+ *                 description: Status of the user
+ *             example:
+ *               status: "active"
+ *     responses:
+ *       "200":
+ *         description: User status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/B2BUser'
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ */
+
+/**
+ * @swagger
+ * /b2bUser/{userId}/update-token:
+ *   post:
+ *     summary: Update notification token
+ *     description: Allows users to update their notification token.
+ *     tags: [B2BUsers]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the B2B user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - notificationToken
+ *             properties:
+ *               notificationToken:
+ *                 type: string
+ *                 description: Notification token of the user
+ *             example:
+ *               notificationToken: "some_notification_token"
+ *     responses:
+ *       "200":
+ *         description: Notification token updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/B2BUser'
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "401":
+ *         $ref: '#/components/responses/Unauthorized'
+ *       "403":
+ *         $ref: '#/components/responses/Forbidden'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ */
+
 

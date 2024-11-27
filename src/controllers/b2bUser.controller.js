@@ -512,6 +512,64 @@ const deleteSubCategory = async (req, res) => {
   }
 };
 
+const updateUserStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { status } = req.body;
+
+    // Find the user by ID and update their status
+    const user = await B2BUser.findByIdAndUpdate(
+      userId,
+      { status },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'No user found with that ID',
+      });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        user,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'error',
+      message: err.message,
+    });
+  }
+};
+
+const updateNotificationToken = async (req, res) => {
+  const { userId } = req.params;
+    const { notificationToken } = req.body;
+  try {
+      const user = await B2BUser.findById(userId);
+      if (!user) {
+          throw new Error('User not found');
+      }
+      user.notificationToken = notificationToken;
+      await user.save();
+      return res.status(200).json({
+        status: true,
+        message: 'Notification token updated successfully',
+      });
+       
+  } catch (error) {
+      console.error('Error updating notification token:', error);
+     
+       return res.status(400).json({
+        status: false,
+        message: 'Failed to update notification token',
+      });
+  }
+};
+
 
 export {
   createB2BUser,
@@ -537,4 +595,6 @@ export {
   deleteSubCategory,
   generateOTPController,
   loginWithOTPController,
+  updateUserStatus,
+  updateNotificationToken,
 };
