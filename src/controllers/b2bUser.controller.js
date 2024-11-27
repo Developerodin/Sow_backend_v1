@@ -431,13 +431,25 @@ const addSubCategory = async (req, res) => {
     if (!category) {
       return res.status(404).json({ message: 'Category not found' });
     }
-
-    category.sub_category.push({ name, price, unit });
+    const newSubcategory = {
+      name,
+      price,
+      unit,
+    };
+    category.sub_category.push(newSubcategory);
     await user.save();
 
-    res.status(201).json(category.sub_category);
+    res.status(201).json({
+      status: 'success',
+      message: 'Subcategory added successfully',
+      data: newSubcategory,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(400).json({
+      status: 'error',
+      message: error,
+    });
   }
 };
 
@@ -478,9 +490,18 @@ const updateSubCategory = async (req, res) => {
     subCategory.updatedAt = Date.now();
 
     await user.save();
-    res.status(200).json(subCategory);
+ 
+    res.status(200).json({
+      status: 'success',
+      message: 'Subcategory updated successfully',
+      data: subCategory,
+    });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error(error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+    })
   }
 };
 
@@ -506,11 +527,18 @@ const deleteSubCategory = async (req, res) => {
 
     subCategory.remove();
     await user.save();
-    res.status(204).json({ message: 'Subcategory deleted successfully' });
+    res.status(204).json({
+      status: 'success',
+      message: 'Subcategory deleted successfully',
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+
+
 
 const updateUserStatus = async (req, res) => {
   try {
