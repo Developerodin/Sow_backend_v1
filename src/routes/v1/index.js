@@ -10,6 +10,9 @@ import subCategoryRoute from './subCategory.routes.js';
 import B2bOrderRoute from './b2bOrder.routes.js';
 import B2cOrderRoute from './b2cOrder.routes.js';
 import QuotationRoute from './quotation.routes.js ';
+import MandiRateRoute from './mandi.routes.js ';
+import MandiRatesRoute from './mandiRates.routes.js ';
+import MarketRatesRoute from './marketRates.routes.js';
 
 const router = express.Router();
 
@@ -49,6 +52,18 @@ const defaultRoutes = [
   {
     path : '/quotations',
     route : QuotationRoute,
+  },
+  {
+    path : '/mandi',
+    route : MandiRateRoute,
+  },
+  {
+    path : '/mandiRates',
+    route : MandiRatesRoute,
+  },
+  {
+    path : '/marketRates',
+    route : MarketRatesRoute,
   },
 ];
 

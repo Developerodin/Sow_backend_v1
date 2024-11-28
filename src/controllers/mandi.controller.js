@@ -1,8 +1,8 @@
-import Mandi from "../Models/Mandi.Model.js";
+import Mandi from "../models/Mandi.model.js";
 
 
 // Create a new Mandi entry
-export const createMandi = async (req, res) => {
+const createMandi = async (req, res) => {
   try {
     const { mandiname, city, state, categories } = req.body;
 
@@ -16,7 +16,7 @@ export const createMandi = async (req, res) => {
 };
 
 // Get all Mandi entries
-export const getAllMandi = async (req, res) => {
+const getAllMandi = async (req, res) => {
   try {
     const mandis = await Mandi.find();
     res.status(200).json(mandis);
@@ -26,7 +26,7 @@ export const getAllMandi = async (req, res) => {
 };
 
 // Get a single Mandi entry by ID
-export const getMandiById = async (req, res) => {
+const getMandiById = async (req, res) => {
   try {
     const { id } = req.params;
     const mandi = await Mandi.findById(id);
@@ -42,7 +42,7 @@ export const getMandiById = async (req, res) => {
 };
 
 // Update a Mandi entry by ID
-export const updateMandi = async (req, res) => {
+const updateMandi = async (req, res) => {
   try {
     const { id } = req.params;
     const { mandiname, city, state, categories } = req.body;
@@ -64,7 +64,7 @@ export const updateMandi = async (req, res) => {
 };
 
 // Delete a Mandi entry by ID
-export const deleteMandi = async (req, res) => {
+const deleteMandi = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -81,7 +81,7 @@ export const deleteMandi = async (req, res) => {
 };
 
 // Change Mandi status by ID
-export const changeMandiStatus = async (req, res) => {
+const changeMandiStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
@@ -100,3 +100,5 @@ export const changeMandiStatus = async (req, res) => {
     res.status(500).json({ message: 'Failed to change Mandi status', error });
   }
 };
+
+export { createMandi, getAllMandi, getMandiById, updateMandi, deleteMandi, changeMandiStatus };

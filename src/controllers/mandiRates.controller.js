@@ -1,8 +1,9 @@
-import MandiCategoryPrice from "../Models/MandiRates.Model.js";
-import Mandi from "../Models/Mandi.Model.js";
+import MandiCategoryPrice from "../models/MandiRates.model.js";
+import Mandi from "../models/Mandi.model.js";
+
 
 // Save the entire array of categories with prices
-export const saveCategoryPrices = async (req, res) => {
+const saveCategoryPrices = async (req, res) => {
   try {
     const { mandi, categoryPrices } = req.body;
     const newMandiCategoryPrice = new MandiCategoryPrice({ mandi, categoryPrices });
@@ -14,7 +15,7 @@ export const saveCategoryPrices = async (req, res) => {
 };
 
 // Update a price of a single category
-export const updateCategoryPrice = async (req, res) => {
+const updateCategoryPrice = async (req, res) => {
   try {
     const { mandiId, category } = req.params;
     const { newPrice } = req.body;
@@ -34,7 +35,7 @@ export const updateCategoryPrice = async (req, res) => {
   }
 };
 
-export const deleteCategoryPrice = async (req, res) => {
+const deleteCategoryPrice = async (req, res) => {
   try {
     const { mandiId, category } = req.params;
 
@@ -76,7 +77,7 @@ export const deleteCategoryPrice = async (req, res) => {
 
 
 // Get all data
-export const getAllData = async (req, res) => {
+const getAllData = async (req, res) => {
   try {
     const data = await MandiCategoryPrice.find().populate('mandi');
     res.status(200).json(data);
@@ -86,7 +87,7 @@ export const getAllData = async (req, res) => {
 };
 
 // Get price difference and percentage change
-export const getPriceDifference = async (req, res) => {
+const getPriceDifference = async (req, res) => {
   try {
     const { mandiId, category } = req.params;
 
@@ -138,7 +139,7 @@ export const getPriceDifference = async (req, res) => {
 
 
 // Get entire history of a Mandi
-export const getMandiHistory = async (req, res) => {
+const getMandiHistory = async (req, res) => {
   try {
     const { mandiId } = req.params;
     const mandiHistory = await MandiCategoryPrice.find({ mandi: mandiId }).sort({ createdAt: -1 });
@@ -149,7 +150,7 @@ export const getMandiHistory = async (req, res) => {
 };
 
 // Get history of a specific category
-export const getCategoryHistory = async (req, res) => {
+const getCategoryHistory = async (req, res) => {
   try {
     const { mandiId, category } = req.params;
     const categoryHistory = await MandiCategoryPrice.find({
@@ -164,7 +165,7 @@ export const getCategoryHistory = async (req, res) => {
 };
 
 // Get history based on time frames (week, month, year)
-export const getHistoryByTimeframe = async (req, res) => {
+const getHistoryByTimeframe = async (req, res) => {
   try {
     const { mandiId, category, timeframe } = req.params;
     let startDate, endDate;
@@ -216,7 +217,7 @@ export const getHistoryByTimeframe = async (req, res) => {
 };
 
 
-export const getMandiByCategory = async (req, res) => {
+const getMandiByCategory = async (req, res) => {
   try {
     const { category } = req.params;
 
@@ -246,3 +247,5 @@ export const getMandiByCategory = async (req, res) => {
     res.status(500).json({ message: 'Server error' });
   }
 };
+
+export { saveCategoryPrices, updateCategoryPrice, deleteCategoryPrice, getAllData, getPriceDifference, getMandiHistory, getCategoryHistory, getHistoryByTimeframe, getMandiByCategory };
