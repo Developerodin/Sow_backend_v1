@@ -1,4 +1,4 @@
-import MarketRates from "../Models/MarketRates.Model.js";
+import MarketRates from "../models/MarketRates.model.js";
 
 
 const createMarketRates = async (req, res) => {
