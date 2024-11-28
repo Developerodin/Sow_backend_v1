@@ -1,5 +1,6 @@
 import SubCategory from "../models/subCategory.modal.js"; 
 import Category from "../models/category.modal.js";
+import mongoose from "mongoose";
 
 // Create a new subcategory
 const createSubCategory = async (req, res) => {
@@ -95,11 +96,52 @@ const deleteSubCategory = async (req, res) => {
   }
 };
 
+const getSubCategoriesByCategoryName = async (req, res) => {
+  try {
+    const { categoryName } = req.body;  // Now accessing category name from request body
+
+    if (!categoryName) {
+      return res.status(400).json({ message: "Category name is required in the request body" });
+    }
+
+    console.log("Received categoryName:", categoryName);
+
+    // Step 1: Find the category document by its name
+    const category = await Category.findOne({ name: categoryName });
+
+    if (!category) {
+      console.log(`Category "${categoryName}" not found`);
+      return res.status(404).json({ message: "Category not found" });
+    }
+
+    console.log("Category found:", category);
+
+    // Step 2: Find subcategories using the category's _id
+    const subCategories = await SubCategory.find({ categoryId: category._id });
+
+    if (subCategories.length === 0) {
+      console.log(`No subcategories found for category "${categoryName}"`);
+      return res.status(404).json({ message: "No subcategories found for this category" });
+    }
+
+    console.log("Found subcategories:", subCategories);
+
+    // Step 3: Return the subcategories in the response
+    res.status(200).json(subCategories);
+  } catch (error) {
+    console.error("Error fetching subcategories:", error.message);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+
+
 export {
   createSubCategory,
   getAllSubCategories,
   getSubCategoryById,
   updateSubCategory,
   deleteSubCategory,
-  getSubCategoriesByCategoryId
+  getSubCategoriesByCategoryId,
+  getSubCategoriesByCategoryName,
 };

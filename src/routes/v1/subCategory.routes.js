@@ -5,7 +5,8 @@ import {
   getSubCategoryById, 
   getSubCategoriesByCategoryId, 
   updateSubCategory, 
-  deleteSubCategory 
+  deleteSubCategory ,
+  getSubCategoriesByCategoryName,
 } from "../../controllers/subCategory.controller.js"; // Adjust the path as needed
 
 const router = express.Router();
@@ -186,5 +187,77 @@ router.patch("/:id", updateSubCategory);
  *         description: Server error
  */
 router.delete("/:id", deleteSubCategory);
+
+/**
+ * @swagger
+ * /subcategories/category:
+ *   post:
+ *     summary: Get all subcategories by category name
+ *     description: Retrieve all subcategories for a specific category name by posting the category name in the request body.
+ *     tags: [SubCategories]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               categoryName:
+ *                 type: string
+ *                 description: The name of the category to filter subcategories by.
+ *                 example: "Electronics"
+ *     responses:
+ *       "200":
+ *         description: A list of subcategories for the specified category
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/SubCategory'
+ *       "400":
+ *         description: Missing category name in the request body
+ *       "404":
+ *         description: No subcategories found for the specified category name
+ *       "500":
+ *         description: Internal server error
+ */
+
+
+router.post("/category", getSubCategoriesByCategoryName);
+
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     SubCategory:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: Unique identifier for the subcategory
+ *         categoryId:
+ *           type: string
+ *           description: ID of the category this subcategory belongs to
+ *         name:
+ *           type: string
+ *           description: Name of the subcategory
+ *         description:
+ *           type: string
+ *           description: Description of the subcategory
+ *         timestamp:
+ *           type: string
+ *           format: date-time
+ *           description: Timestamp when the subcategory was created or updated
+ *       example:
+ *         id: "63b8e5b934e3e3f7d4a1c6f5"
+ *         categoryId: "63b8e5b934e3e3f7d4a1c6f4"
+ *         name: "Mobile Phones"
+ *         description: "Subcategory for mobile phones"
+ *         timestamp: "2024-11-22T10:30:00Z"
+ */
+
+
 
 export default router;
