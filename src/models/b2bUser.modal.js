@@ -122,6 +122,15 @@ const b2bUserSchema = mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    notificationFormMandiList: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Mandi'
+  }],
+  favoriteMandis: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Mandi'
+  }],
+
   },
   {
     timestamps: true,

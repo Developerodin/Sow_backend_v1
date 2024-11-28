@@ -28,6 +28,9 @@ import {
   loginWithOTPController,
   updateUserStatus,
   updateNotificationToken,
+  addMandiToList,
+  removeMandiFromList,
+  getUserMandis,
 
 } from '../../controllers/b2bUser.controller.js';
 
@@ -42,6 +45,11 @@ b2bRoute.patch('/updateStatus/:userId', updateUserStatus);
 
 // Update notification token
 b2bRoute.post('/:userId/update-token', updateNotificationToken);
+
+// Mandi routes
+b2bRoute.post('/add-mandi', addMandiToList);
+b2bRoute.delete('/remove-mandi', removeMandiFromList);
+b2bRoute.get('/:userId/mandis', getUserMandis);
 
 // Create a B2B user
 b2bRoute.post('/', validate(b2bUserValidation.createB2BUser), createB2BUser);
@@ -1500,5 +1508,195 @@ export default b2bRoute;
  *       "404":
  *         $ref: '#/components/responses/NotFound'
  */
+
+/**
+ * @swagger
+ * /b2bUser/add-mandi:
+ *   post:
+ *     summary: Add Mandi to user's list
+ *     description: Add a Mandi to the user's list.
+ *     tags: [B2BUsers]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - mandiId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user
+ *               mandiId:
+ *                 type: string
+ *                 description: ID of the Mandi
+ *             example:
+ *               userId: "63b8e5b934e3e3f7d4a1c6f5"
+ *               mandiId: "63b8e5b934e3e3f7d4a1c6f4"
+ *     responses:
+ *       "200":
+ *         description: Mandi added to user's list successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Mandi added to user's list successfully"
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "500":
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * /b2bUser/remove-mandi:
+ *   delete:
+ *     summary: Remove Mandi from user's list
+ *     description: Remove a Mandi from the user's list.
+ *     tags: [B2BUsers]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - mandiId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user
+ *               mandiId:
+ *                 type: string
+ *                 description: ID of the Mandi
+ *             example:
+ *               userId: "63b8e5b934e3e3f7d4a1c6f5"
+ *               mandiId: "63b8e5b934e3e3f7d4a1c6f4"
+ *     responses:
+ *       "200":
+ *         description: Mandi removed from user's list successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Mandi removed from user's list successfully"
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "500":
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * /b2bUser/{userId}/mandis:
+ *   get:
+ *     summary: Get user's Mandis
+ *     description: Retrieve the list of Mandis for a specific user.
+ *     tags: [B2BUsers]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the user
+ *     responses:
+ *       "200":
+ *         description: List of Mandis for the user
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Mandi'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ *       "500":
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Mandi:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: string
+ *           description: Unique identifier for the Mandi
+ *         mandiname:
+ *           type: string
+ *           description: Name of the Mandi
+ *         city:
+ *           type: string
+ *           description: City where the Mandi is located
+ *         state:
+ *           type: string
+ *           description: State where the Mandi is located
+ *         categories:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Categories available in the Mandi
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *           description: Timestamp when the Mandi was created
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *           description: Timestamp when the Mandi was last updated
+ *       example:
+ *         id: "63b8e5b934e3e3f7d4a1c6f5"
+ *         mandiname: "Example Mandi"
+ *         city: "Example City"
+ *         state: "Example State"
+ *         categories: ["Category1", "Category2"]
+ *         createdAt: "2024-11-22T10:30:00Z"
+ *         updatedAt: "2024-11-22T10:30:00Z"
+ * 
+ *   responses:
+ *     InvalidInput:
+ *       description: Invalid input
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Invalid input"
+ *     NotFound:
+ *       description: Not Found
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Not Found"
+ *     ServerError:
+ *       description: Server error
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Internal server error"
+ */
+
 
 

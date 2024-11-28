@@ -13,6 +13,7 @@ import QuotationRoute from './quotation.routes.js ';
 import MandiRateRoute from './mandi.routes.js ';
 import MandiRatesRoute from './mandiRates.routes.js ';
 import MarketRatesRoute from './marketRates.routes.js';
+import DailyRatesRoute from './dailyRates.route.js';
 
 const router = express.Router();
 
@@ -64,6 +65,10 @@ const defaultRoutes = [
   {
     path : '/marketRates',
     route : MarketRatesRoute,
+  },
+  {
+    path : '/dailyRates',
+    route : DailyRatesRoute,
   },
 ];
 

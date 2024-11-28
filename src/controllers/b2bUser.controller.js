@@ -6,6 +6,7 @@ import * as b2bUserService from '../services/b2bUser.service.js';
 import B2BAddress from '../models/b2buserAddress.model.js';
 import B2BKYC from '../models/b2buserKyc.model.js';
 import B2BUser from '../models/b2bUser.modal.js';
+import Mandi from '../models/Mandi.model.js';
 import axios from "axios";
 import generateToken from '../utils/jwt.js';
 
@@ -605,6 +606,69 @@ const updateNotificationToken = async (req, res) => {
   }
 };
 
+const addMandiToList = async (req, res) => {
+  const { userId, mandiId, listType } = req.body;
+
+  try {
+      const user = await B2BUser.findById(userId);
+      if (!user) return res.status(404).json({ message: 'User not found' });
+
+      const mandi = await Mandi.findById(mandiId);
+      if (!mandi) return res.status(404).json({ message: 'Mandi not found' });
+
+      if (listType === 'notification') {
+          user.notificationFormMandiList.push(mandiId);
+      } else if (listType === 'favorite') {
+          user.favoriteMandis.push(mandiId);
+      } else {
+          return res.status(400).json({ message: 'Invalid list type' });
+      }
+
+      await user.save();
+      res.status(200).json({ message: 'Mandi added to list', user });
+
+  } catch (error) {
+      res.status(500).json({ message: 'Server Error', error });
+  }
+};
+
+const removeMandiFromList = async (req, res) => {
+  const { userId, mandiId, listType } = req.body;
+
+  try {
+      const user = await B2BUser.findById(userId);
+      if (!user) return res.status(404).json({ message: 'User not found' });
+
+      if (listType === 'notification') {
+          user.notificationFormMandiList = user.notificationFormMandiList.filter(id => id.toString() !== mandiId);
+      } else if (listType === 'favorite') {
+          user.favoriteMandis = user.favoriteMandis.filter(id => id.toString() !== mandiId);
+      } else {
+          return res.status(400).json({ message: 'Invalid list type' });
+      }
+
+      await user.save();
+      res.status(200).json({ message: 'Mandi removed from list', user });
+
+  } catch (error) {
+      res.status(500).json({ message: 'Server Error', error });
+  }
+};
+
+const getUserMandis = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+      const user = await B2BUser.findById(userId).populate('notificationFormMandiList').populate('favoriteMandis');
+      if (!user) return res.status(404).json({ message: 'User not found' });
+
+      res.status(200).json({ notificationFormMandiList: user.notificationFormMandiList, favoriteMandis: user.favoriteMandis });
+
+  } catch (error) {
+      res.status(500).json({ message: 'Server Error', error });
+  }
+};
+
 
 export {
   createB2BUser,
@@ -632,4 +696,8 @@ export {
   loginWithOTPController,
   updateUserStatus,
   updateNotificationToken,
+  addMandiToList,
+  removeMandiFromList,
+  getUserMandis,
+  
 };
