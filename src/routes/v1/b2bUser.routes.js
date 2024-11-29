@@ -479,6 +479,8 @@ export default b2bRoute;
  *               - longitude
  *               - googleAddress
  *               - addressType
+ *               - city
+ *               - state    
  *             properties:
  *               userId:
  *                 type: string
@@ -505,12 +507,20 @@ export default b2bRoute;
  *                 type: string
  *                 enum: ['Warehouse', 'Other']
  *                 description: Type of the address (either Warehouse or Other)
+ *               city:
+ *                 type: string
+ *                 description: City of the address
+ *               state:
+ *                 type: string
+ *                 description: State of the address
  *             example:
  *               userId: 12345
  *               latitude: 12.9716
  *               longitude: 77.5946
  *               googleAddress: "123 Main St, Springfield"
  *               addressType: "Warehouse"
+ *               city: "Bangalore"
+ *               state: "Karnataka"
  *     responses:
  *       "201":
  *         description: Created successfully
@@ -532,6 +542,10 @@ export default b2bRoute;
  *                 googleAddress:
  *                   type: string
  *                 addressType:
+ *                   type: string
+ *                 city:
+ *                   type: string
+ *                 state:
  *                   type: string
  *                 createdAt:
  *                   type: string

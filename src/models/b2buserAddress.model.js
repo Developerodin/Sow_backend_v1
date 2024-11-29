@@ -37,6 +37,14 @@ const addressSchema = mongoose.Schema(
       enum: ['Warehouse', 'Other'],
       required: true,
     },
+    city: {
+      type: String,
+      trim: true,
+    },
+    state: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,

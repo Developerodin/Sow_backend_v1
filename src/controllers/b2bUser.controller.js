@@ -167,8 +167,8 @@ const deleteB2BUser = catchAsync(async (req, res) => {
 
 const addB2BAddress = async (req, res) => {
   try {
-    const { userId, latitude, longitude, googleAddress, buildingName, roadArea, note, addressType } = req.body;
-     console.log(userId, latitude, longitude, googleAddress, buildingName)
+    const { userId, latitude, longitude, googleAddress, buildingName, roadArea, note, addressType, city, state } = req.body;
+     console.log(userId, latitude, longitude, googleAddress, buildingName, city, state)
     const address = new B2BAddress({
       userId,
       latitude,
@@ -178,6 +178,9 @@ const addB2BAddress = async (req, res) => {
       roadArea,
       note,
       addressType,
+      city,
+      state,
+
     });
 
     await address.save();
