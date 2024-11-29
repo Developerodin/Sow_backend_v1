@@ -322,6 +322,99 @@ export default router;
 
 /**
  * @swagger
+ * /b2bOrder/filterusers:
+ *   post:
+ *     summary: Get filtered users by role
+ *     description: Retrieve users filtered by role, category, subcategory, and optionally city.
+ *     tags: [B2bOrders]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - categoryName
+ *               - subCategoryName
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID of the requesting user
+ *               categoryName:
+ *                 type: string
+ *                 description: Name of the category
+ *               subCategoryName:
+ *                 type: string
+ *                 description: Name of the subcategory
+ *               city:
+ *                 type: string
+ *                 description: (Optional) City to filter users by
+ *             example:
+ *               userId: "63b8e5b934e3e3f7d4a1c6f5"
+ *               categoryName: "Electronics"
+ *               subCategoryName: "Mobile Phones"
+ *               city: "New York"
+ *     responses:
+ *       "200":
+ *         description: Users filtered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                         description: User ID
+ *                       name:
+ *                         type: string
+ *                         description: User name
+ *                       registerAs:
+ *                         type: string
+ *                         description: User role
+ *                       category:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             name:
+ *                               type: string
+ *                             sub_category:
+ *                               type: array
+ *                               items:
+ *                                 type: object
+ *                                 properties:
+ *                                   name:
+ *                                     type: string
+ *                       addresses:
+ *                         type: array
+ *                         items:
+ *                           type: object
+ *                           properties:
+ *                             city:
+ *                               type: string
+ *                             addressLine:
+ *                               type: string
+ *                             postalCode:
+ *                               type: string
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ *       "500":
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
  * components:
  *   schemas:
  *     B2bOrder:
@@ -432,3 +525,4 @@ export default router;
  *                 type: string
  *                 example: "Order not found"
  */
+

@@ -31,6 +31,7 @@ import {
   addMandiToList,
   removeMandiFromList,
   getUserMandis,
+  getUniqueCitiesAndStates,
 
 } from '../../controllers/b2bUser.controller.js';
 
@@ -91,6 +92,9 @@ b2bRoute.put('/kyc/:id', auth('manageB2BUsers'), validate(b2bUserValidation.upda
 
 // Fetch all B2B addresses by user ID
 b2bRoute.get('/address/:userId', getB2BAllAddressesByUserId);
+
+// Fetch unique cities and states
+b2bRoute.post('/address/citystate', getUniqueCitiesAndStates);
 
 // Fetch B2B KYC details by user ID
 b2bRoute.get('/kyc/:userId', getB2BKycDetailsByUserId);
@@ -704,6 +708,63 @@ export default b2bRoute;
  *         description: Unauthorized access
  *       "404":
  *         description: Address not found
+ */
+
+/**
+ * @swagger
+ * /b2bUser/address/citystate:
+ *   post:
+ *     summary: Get unique cities and states
+ *     description: Retrieve unique cities and states from all addresses.
+ *     tags: [B2B Address]
+ *     responses:
+ *       "200":
+ *         description: Unique cities and states retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     uniqueCities:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["New York", "Los Angeles", "Chicago"]
+ *                     uniqueStates:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       example: ["New York", "California", "Illinois"]
+ *       "500":
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * components:
+ *   responses:
+ *     ServerError:
+ *       description: Server error
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               success:
+ *                 type: boolean
+ *                 example: false
+ *               message:
+ *                 type: string
+ *                 example: "An error occurred while fetching unique cities and states"
+ *               error:
+ *                 type: string
+ *                 example: "Error message"
  */
 
 // KYC Section

@@ -243,6 +243,29 @@ const getB2BAllAddressesByUserId = async (req, res) => {
   }
 };
 
+const getUniqueCitiesAndStates = async (req, res) => {
+  try {
+    const addresses = await B2BAddress.find({}, 'city state');
+
+    const uniqueCities = [...new Set(addresses.map(address => address.city ))];
+    const uniqueStates = [...new Set(addresses.map(address => address.state ))];
+
+    res.status(200).json({
+      success: true,
+      data: {
+        uniqueCities,
+        uniqueStates,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'An error occurred while fetching unique cities and states',
+      error: error.message,
+    });
+  }
+};
+
 
 // KYC
 
@@ -702,5 +725,6 @@ export {
   addMandiToList,
   removeMandiFromList,
   getUserMandis,
+  getUniqueCitiesAndStates,
   
 };
