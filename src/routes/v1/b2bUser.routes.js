@@ -48,7 +48,7 @@ b2bRoute.post('/:userId/update-token', updateNotificationToken);
 
 // Mandi routes
 b2bRoute.post('/add-mandi', addMandiToList);
-b2bRoute.delete('/remove-mandi', removeMandiFromList);
+b2bRoute.post('/remove-mandi', removeMandiFromList);
 b2bRoute.get('/:userId/mandis', getUserMandis);
 
 // Create a B2B user
@@ -1555,7 +1555,7 @@ export default b2bRoute;
 /**
  * @swagger
  * /b2bUser/remove-mandi:
- *   delete:
+ *   post:
  *     summary: Remove Mandi from user's list
  *     description: Remove a Mandi from the user's list.
  *     tags: [B2BUsers]
@@ -1568,6 +1568,7 @@ export default b2bRoute;
  *             required:
  *               - userId
  *               - mandiId
+ *               - listType
  *             properties:
  *               userId:
  *                 type: string
@@ -1575,9 +1576,13 @@ export default b2bRoute;
  *               mandiId:
  *                 type: string
  *                 description: ID of the Mandi
+ *               listType:
+ *                 type: string
+ *                 description: Type of list (notification or favorite)
  *             example:
  *               userId: "63b8e5b934e3e3f7d4a1c6f5"
  *               mandiId: "63b8e5b934e3e3f7d4a1c6f4"
+ *               listType: "favorite"
  *     responses:
  *       "200":
  *         description: Mandi removed from user's list successfully
@@ -1589,6 +1594,8 @@ export default b2bRoute;
  *                 message:
  *                   type: string
  *                   example: "Mandi removed from user's list successfully"
+ *                 user:
+ *                   $ref: '#/components/schemas/B2BUser'
  *       "400":
  *         $ref: '#/components/responses/InvalidInput'
  *       "500":
