@@ -6,6 +6,7 @@ import {
   updateOrder,
   deleteOrder,
   getOrdersByUserId,
+  getFilteredUsersByRole
 } from "../../controllers/B2bOrder.controller.js";
 
 const router = express.Router();
@@ -27,6 +28,9 @@ router.delete("/:id", deleteOrder);
 
 // Get orders by user ID
 router.get("/user/:userId", getOrdersByUserId);
+
+router.post("/filterusers", getFilteredUsersByRole);
+
 
 export default router;
 
