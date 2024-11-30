@@ -4,7 +4,7 @@ const orderSchema = mongoose.Schema(
     {
         orderNo : {
             type : String,
-            required : true,
+            required : false,
             unique : true,
         },
         category : {
@@ -70,9 +70,9 @@ const orderSchema = mongoose.Schema(
 );
 orderSchema.pre('save', async function(next) {
     if (!this.orderNo) {
-      // Generate a unique orderNo based on the current timestamp and a random number
+     
       const timestamp = Date.now();
-      const randomSuffix = Math.floor(1000 + Math.random() * 9000); // Random 4-digit number
+      const randomSuffix = Math.floor(1000 + Math.random() * 9000);
       this.orderNo = `ORD-${timestamp}-${randomSuffix}`;
     }
     next();
