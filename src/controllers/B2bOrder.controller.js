@@ -225,6 +225,7 @@ const getFilteredUsersByRole = async (req, res) => {
     res.status(200).json({
       success: true,
       data: response,
+      role:targetRole
     });
   } catch (error) {
     console.error('Error fetching filtered users with addresses:', error);
