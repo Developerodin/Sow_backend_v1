@@ -528,3 +528,160 @@ export default router;
  *                 example: "Order not found"
  */
 
+
+/**
+ * @swagger
+ * /b2bOrder/getratedetails:
+ *   post:
+ *     summary: Get user details with category and subcategory
+ *     description: Retrieve user details along with category and subcategory information.
+ *     tags: [B2bOrders]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - categoryId
+ *               - subCategoryId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user
+ *               categoryId:
+ *                 type: string
+ *                 description: ID of the category
+ *               subCategoryId:
+ *                 type: string
+ *                 description: ID of the subcategory
+ *             example:
+ *               userId: "63b8e5b934e3e3f7d4a1c6f5"
+ *               categoryId: "63b8e5b934e3e3f7d4a1c6f4"
+ *               subCategoryId: "63b8e5b934e3e3f7d4a1c6f3"
+ *     responses:
+ *       "200":
+ *         description: User details with category and subcategory retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     userDetails:
+ *                       type: object
+ *                       properties:
+ *                         name:
+ *                           type: string
+ *                         email:
+ *                           type: string
+ *                         phone:
+ *                           type: string
+ *                         registerAs:
+ *                           type: string
+ *                     addresses:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           userId:
+ *                             type: string
+ *                           latitude:
+ *                             type: number
+ *                           longitude:
+ *                             type: number
+ *                           googleAddress:
+ *                             type: string
+ *                           buildingName:
+ *                             type: string
+ *                           roadArea:
+ *                             type: string
+ *                           note:
+ *                             type: string
+ *                           addressType:
+ *                             type: string
+ *                           city:
+ *                             type: string
+ *                           state:
+ *                             type: string
+ *                     category:
+ *                       type: object
+ *                       properties:
+ *                         _id:
+ *                           type: string
+ *                         name:
+ *                           type: string
+ *                         sub_category:
+ *                           type: array
+ *                           items:
+ *                             type: object
+ *                             properties:
+ *                               _id:
+ *                                 type: string
+ *                               name:
+ *                                 type: string
+ *                               price:
+ *                                 type: number
+ *                               unit:
+ *                                 type: string
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ *       "500":
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * components:
+ *   responses:
+ *     InvalidInput:
+ *       description: Invalid input
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               success:
+ *                 type: boolean
+ *                 example: false
+ *               message:
+ *                 type: string
+ *                 example: "userId, categoryId, and subCategoryId are required"
+ *     NotFound:
+ *       description: Not Found
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               success:
+ *                 type: boolean
+ *                 example: false
+ *               message:
+ *                 type: string
+ *                 example: "User not found"
+ *     ServerError:
+ *       description: Server error
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               success:
+ *                 type: boolean
+ *                 example: false
+ *               message:
+ *                 type: string
+ *                 example: "An error occurred while processing your request"
+ *               error:
+ *                 type: string
+ *                 example: "Error message"
+ */

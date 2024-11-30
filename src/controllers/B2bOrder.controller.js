@@ -261,12 +261,6 @@ const getUserDetailsWithCategoryAndSubCategory = async (req, res) => {
 
     // Fetch user address
     const userAddresses = await B2BAddress.find({ userId });
-    if (!userAddresses.length) {
-      return res.status(404).json({
-        success: false,
-        message: 'User address not found',
-      });
-    }
 
     // Filter category and subcategory data
     const filteredCategory = user.category
