@@ -372,10 +372,45 @@ const filterOrdersByUserId = async (req, res) => {
 
 const getNewOrdersForUser = async (req, res) => {
   try {
-    const { userId } = req.params; // Extract userId from request parameters
+    const { userId,period } = req.body; 
+   
 
-    // Fetch orders where orderTo matches userId and orderStatus is 'New'
-    const orders = await Order.find({ orderTo: userId, orderStatus: 'New' })
+    let startDate;
+    const now = new Date();
+
+    switch (period) {
+      case 'today':
+        startDate = moment().startOf('day').toDate();
+        break;
+      case 'last-week':
+        startDate = moment().subtract(1, 'week').startOf('day').toDate();
+        break;
+      case 'last-month':
+        startDate = moment().subtract(1, 'month').startOf('day').toDate();
+        break;
+      case 'last-3-months':
+        startDate = moment().subtract(3, 'months').startOf('day').toDate();
+        break;
+      case 'last-6-months':
+        startDate = moment().subtract(6, 'months').startOf('day').toDate();
+        break;
+      case 'all':
+      default:
+        startDate = null; // No date filter
+    }
+
+    // Build the query with optional date filter
+    const query = {
+      orderTo: userId,
+      orderStatus: 'New',
+    };
+
+    if (startDate) {
+      query.createdAt = { $gte: startDate, $lte: now };
+    }
+
+    // Fetch orders based on the query
+    const orders = await Order.find(query)
       .populate('orderBy', 'name email')
       .populate('orderTo', 'name email')
       .populate('location', 'address city state')

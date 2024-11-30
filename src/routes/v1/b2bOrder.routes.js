@@ -37,7 +37,7 @@ router.post("/filterusers", getFilteredUsersByRole);
 
 router.post("/filterorders", filterOrdersByUserId);
 router.post("/updateOrderStatus", updateOrderStatus);
-router.get("/getNewOrdersForUser/:userId", getNewOrdersForUser);
+router.post("/getNewOrdersForUser", getNewOrdersForUser);
 
 router.post("/getratedetails", getUserDetailsWithCategoryAndSubCategory);
 
