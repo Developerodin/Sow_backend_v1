@@ -307,6 +307,70 @@ const getUserDetailsWithCategoryAndSubCategory = async (req, res) => {
 };
 
 
+const getUserOrdersById = async (req, res) => {
+  try {
+    const { userId } = req.params; // Extract user ID from request parameters
+
+    // Find all orders where orderBy matches the userId
+    const orders = await Order.find({ orderBy: userId })
+      .populate('orderBy', 'name email') // Populate orderBy with selected fields
+      .populate('orderTo', 'name email') // Populate orderTo with selected fields
+      .populate('location', 'address city state') // Populate location with selected fields
+      .populate('category', 'name description') // Populate category with selected fields
+      .populate('subCategory', 'name description').exec(); // Populate subCategory with selected fields
+
+    if (!orders.length) {
+      return res.status(404).json({ message: 'No orders found for this user.' });
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error fetching orders:', error.message);
+    res.status(500).json({ message: 'An error occurred while fetching orders.' });
+  }
+};
+
+const filterOrdersByUserId = async (req, res) => {
+  try {
+    const { userId, type, action } = req.body; // Extract userId, type, and action from the request body
+
+    // Define query filters
+    const statusFilter =
+      type === 'upcoming'
+        ? { orderStatus: 'Pending' }
+        : { orderStatus: { $in: ['Rejected', 'Completed'] } };
+
+    const userFilter =
+      action === 'sell'
+        ? { orderBy: userId }
+        : action === 'purchase'
+        ? { orderTo: userId }
+        : {};
+
+    // Combine filters
+    const query = { ...statusFilter, ...userFilter };
+
+    // Fetch filtered orders and populate necessary fields
+    const orders = await Order.find(query)
+      .populate('orderBy', 'name email')
+      .populate('orderTo', 'name email')
+      .populate('location', 'address city state')
+      .populate('category', 'name description')
+      .populate('subCategory', 'name description').exec();
+
+    if (!orders.length) {
+      return res.status(404).json({ message: 'No orders found for the specified criteria.' });
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error filtering orders:', error.message);
+    res.status(500).json({ message: 'An error occurred while filtering orders.' });
+  }
+};
+
+
+
 export {
   createOrder,
   getAllOrders,
@@ -315,5 +379,7 @@ export {
   deleteOrder,
   getOrdersByUserId,
   getFilteredUsersByRole,
-  getUserDetailsWithCategoryAndSubCategory
+  getUserDetailsWithCategoryAndSubCategory,
+  getUserOrdersById,
+  filterOrdersByUserId
 };

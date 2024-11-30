@@ -7,7 +7,8 @@ import {
   deleteOrder,
   getOrdersByUserId,
   getFilteredUsersByRole,
-  getUserDetailsWithCategoryAndSubCategory
+  getUserDetailsWithCategoryAndSubCategory,
+  filterOrdersByUserId
 } from "../../controllers/B2bOrder.controller.js";
 
 const router = express.Router();
@@ -31,6 +32,8 @@ router.delete("/:id", deleteOrder);
 router.get("/user/:userId", getOrdersByUserId);
 
 router.post("/filterusers", getFilteredUsersByRole);
+
+router.post("/filterorders", filterOrdersByUserId);
 
 router.post("/getratedetails", getUserDetailsWithCategoryAndSubCategory);
 
