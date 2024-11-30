@@ -188,14 +188,26 @@ const getFilteredUsersByRole = async (req, res) => {
       registerAs: targetRole,
     });
 
-    // Filter users based on category and subcategory
-    const filteredUsers = targetUsers.filter((user) => {
-      return user.category.some(
-        (category) =>
-          category.name === categoryName &&
-          category.sub_category.some((sub) => sub.name === subCategoryName)
-      );
-    });
+    // Filter users and their categories based on category and subcategory
+    const filteredUsers = targetUsers
+      .map((user) => {
+        const filteredCategories = user.category
+          .filter((category) => category.name === categoryName)
+          .map((category) => ({
+            ...category,
+            sub_category: category.sub_category.filter((sub) => sub.name === subCategoryName),
+          }))
+          .filter((category) => category.sub_category.length > 0); // Keep only categories with matching subcategories
+
+        if (filteredCategories.length > 0) {
+          return {
+            ...user.toObject(),
+            category: filteredCategories,
+          };
+        }
+        return null;
+      })
+      .filter(Boolean); // Remove null values
 
     // Retrieve addresses for the filtered users
     const userIds = filteredUsers.map((user) => user._id);
@@ -208,7 +220,7 @@ const getFilteredUsersByRole = async (req, res) => {
 
     // Prepare the response combining user and address data
     const response = filteredUsers.map((user) => ({
-      ...user.toObject(),
+      ...user,
       addresses: addresses.filter((address) => address.userId.toString() === user._id.toString()),
     }));
 
@@ -225,6 +237,7 @@ const getFilteredUsersByRole = async (req, res) => {
     });
   }
 };
+
 
 export {
   createOrder,
