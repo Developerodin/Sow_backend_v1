@@ -370,6 +370,30 @@ const filterOrdersByUserId = async (req, res) => {
 };
 
 
+const getNewOrdersForUser = async (req, res) => {
+  try {
+    const { userId } = req.params; // Extract userId from request parameters
+
+    // Fetch orders where orderTo matches userId and orderStatus is 'New'
+    const orders = await Order.find({ orderTo: userId, orderStatus: 'New' })
+      .populate('orderBy', 'name email')
+      .populate('orderTo', 'name email')
+      .populate('location', 'address city state')
+      .populate('category', 'name description')
+      .populate('subCategory', 'name description').exec();
+
+    if (!orders.length) {
+      return res.status(404).json({ message: 'No new orders found for this user.' });
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error fetching new orders:', error.message);
+    res.status(500).json({ message: 'An error occurred while fetching new orders.' });
+  }
+};
+
+
 
 export {
   createOrder,
@@ -381,5 +405,6 @@ export {
   getFilteredUsersByRole,
   getUserDetailsWithCategoryAndSubCategory,
   getUserOrdersById,
-  filterOrdersByUserId
+  filterOrdersByUserId,
+  getNewOrdersForUser
 };

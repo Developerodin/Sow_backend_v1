@@ -8,7 +8,8 @@ import {
   getOrdersByUserId,
   getFilteredUsersByRole,
   getUserDetailsWithCategoryAndSubCategory,
-  filterOrdersByUserId
+  filterOrdersByUserId,
+  getNewOrdersForUser
 } from "../../controllers/B2bOrder.controller.js";
 
 const router = express.Router();
@@ -34,6 +35,7 @@ router.get("/user/:userId", getOrdersByUserId);
 router.post("/filterusers", getFilteredUsersByRole);
 
 router.post("/filterorders", filterOrdersByUserId);
+router.get("/getNewOrdersForUser/:userId", getNewOrdersForUser);
 
 router.post("/getratedetails", getUserDetailsWithCategoryAndSubCategory);
 
