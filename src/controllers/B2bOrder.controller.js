@@ -6,7 +6,6 @@ import B2BAddress from "../models/b2buserAddress.model.js";
 const createOrder = async (req, res) => {
   try {
     const {
-      orderNo,
       category,
       orderBy,
       orderTo,
@@ -21,14 +20,8 @@ const createOrder = async (req, res) => {
       orderStatus,
     } = req.body;
 
-    // Ensure orderNo is unique
-    const existingOrder = await Order.findOne({ orderNo });
-    if (existingOrder) {
-      return res.status(400).json({ message: "Order number already exists" });
-    }
-
+    // Create the new order object without orderNo (it will be generated automatically)
     const newOrder = new Order({
-      orderNo,
       category,
       orderBy,
       orderTo,

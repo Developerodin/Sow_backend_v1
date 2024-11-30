@@ -68,7 +68,15 @@ const orderSchema = mongoose.Schema(
     }
 
 );
-
+orderSchema.pre('save', async function(next) {
+    if (!this.orderNo) {
+      // Generate a unique orderNo based on the current timestamp and a random number
+      const timestamp = Date.now();
+      const randomSuffix = Math.floor(1000 + Math.random() * 9000); // Random 4-digit number
+      this.orderNo = `ORD-${timestamp}-${randomSuffix}`;
+    }
+    next();
+  });
 const Order = mongoose.model('Order', orderSchema);
 
 export default Order;
