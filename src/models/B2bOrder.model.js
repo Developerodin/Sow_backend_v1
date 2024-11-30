@@ -52,15 +52,15 @@ const orderSchema = mongoose.Schema(
             type : Number,
             required : true,
         },
-        photos : {
-            type : String,
-            required : false,
+        photos: {
+            type: [String],
+            required: false,
         },
         orderStatus : {
             type : String,
             required : true,
-            enum : ['Pending', 'Accepted', 'Rejected', 'Completed'],
-            default : 'Pending',
+            enum : ['New','Pending', 'Accepted', 'Rejected', 'Completed'],
+            default : 'New',
         },
     },
     {

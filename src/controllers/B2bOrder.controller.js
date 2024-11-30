@@ -161,11 +161,16 @@ const getFilteredUsersByRole = async (req, res) => {
       });
     }
 
+    const userHasCategory = requestingUser.category.some(
+      (category) => category.name === categoryName
+    );
+
     // Determine the target role based on the requesting user's role
     const roleFlow = {
       Retailer: 'Wholesaler',
-      Wholesaler: 'Mediator',
-      Factory: 'Factory',
+      Wholesaler: userHasCategory ? 'Mediator' : 'Wholesaler',
+      Mediator:'Factory',
+      Factory: userHasCategory ? 'Factory' : 'Wholesaler',
     };
 
     const targetRole = roleFlow[requestingUser.registerAs];
