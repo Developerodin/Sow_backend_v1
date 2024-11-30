@@ -42,7 +42,7 @@ const b2bRoute = express.Router();
 b2bRoute.post('/generateOTP', generateOTPController);
 b2bRoute.post('/loginWithOTP', loginWithOTPController);
 b2bRoute.post('/profilepic', updateUserImage);
-b2bRoute.get('/profilepic', getUserImage);
+b2bRoute.get('/profilepic/:userId', getUserImage);
 // Update user status
 b2bRoute.patch('/updateStatus/:userId', updateUserStatus);
 
