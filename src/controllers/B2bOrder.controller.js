@@ -287,6 +287,7 @@ const getUserDetailsWithCategoryAndSubCategory = async (req, res) => {
         email: user.email,
         phone: user.phone,
         registerAs: user.registerAs,
+        businessName: user.businessName,
       },
       addresses: userAddresses,
       category: filteredCategory,
