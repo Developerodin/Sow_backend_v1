@@ -7,11 +7,10 @@ const orderSchema = mongoose.Schema(
             required : false,
             unique : true,
         },
-        category : {
-            type: mongoose.Schema.Types.ObjectId,
-            ref : 'Category',
+        category: {
+            type : String,
             required : true,
-        },
+          },
         orderBy :{
             type: mongoose.Schema.Types.ObjectId,
             ref :'B2BUser',
@@ -28,8 +27,7 @@ const orderSchema = mongoose.Schema(
             required : true,
         },
         subCategory: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref : 'SubCategory',
+            type : String,
             required : true,
         },
         weight : {

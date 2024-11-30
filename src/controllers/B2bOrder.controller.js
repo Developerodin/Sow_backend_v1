@@ -20,6 +20,7 @@ const createOrder = async (req, res) => {
       orderStatus,
     } = req.body;
 
+    
     // Create the new order object without orderNo (it will be generated automatically)
     const newOrder = new Order({
       category,
@@ -122,8 +123,7 @@ const getOrdersByUserId = async (req, res) => {
     const orders = await Order.find({
       $or: [{ orderBy: userId }, { orderTo: userId }],
     })
-      .populate("category", "name")
-      .populate("subCategory", "name")
+      
       .populate("location", "googleAddress")
       .populate("orderBy", "name registerAs")
       .populate("orderTo", "name registerAs")
@@ -316,8 +316,7 @@ const getUserOrdersById = async (req, res) => {
       .populate('orderBy', 'name email') // Populate orderBy with selected fields
       .populate('orderTo', 'name email') // Populate orderTo with selected fields
       .populate('location', 'address city state') // Populate location with selected fields
-      .populate('category', 'name description') // Populate category with selected fields
-      .populate('subCategory', 'name description').exec(); // Populate subCategory with selected fields
+      .exec(); // Populate subCategory with selected fields
 
     if (!orders.length) {
       return res.status(404).json({ message: 'No orders found for this user.' });
@@ -355,8 +354,7 @@ const filterOrdersByUserId = async (req, res) => {
       .populate('orderBy', 'name email')
       .populate('orderTo', 'name email')
       .populate('location', 'address city state')
-      .populate('category', 'name description')
-      .populate('subCategory', 'name description').exec();
+      .exec();
 
     if (!orders.length) {
       return res.status(404).json({ message: 'No orders found for the specified criteria.' });
@@ -414,8 +412,7 @@ const getNewOrdersForUser = async (req, res) => {
       .populate('orderBy', 'name email')
       .populate('orderTo', 'name email')
       .populate('location', 'address city state')
-      .populate('category', 'name description')
-      .populate('subCategory', 'name description').exec();
+      .exec();
 
     if (!orders.length) {
       return res.status(404).json({ message: 'No new orders found for this user.' });
