@@ -32,7 +32,7 @@ import {
   removeMandiFromList,
   getUserMandis,
   getUniqueCitiesAndStates,
-
+  updateUserImage
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
@@ -40,7 +40,7 @@ const b2bRoute = express.Router();
 // OTP routes
 b2bRoute.post('/generateOTP', generateOTPController);
 b2bRoute.post('/loginWithOTP', loginWithOTPController);
-
+b2bRoute.post('/profilepic', updateUserImage);
 // Update user status
 b2bRoute.patch('/updateStatus/:userId', updateUserStatus);
 

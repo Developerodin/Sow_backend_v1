@@ -696,6 +696,35 @@ const getUserMandis = async (req, res) => {
 };
 
 
+const updateUserImage = async (req, res) => {
+  try {
+    const { userId,image } = req.body;
+
+    if (!userId || !image) {
+      return res.status(400).json({ message: 'User ID and image are required' });
+    }
+
+    // Update the user image
+    const user = await B2BUser.findByIdAndUpdate(
+      userId,
+      { image },
+      { new: true, runValidators: true }
+    );
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.status(200).json({
+      message: 'Image updated successfully',
+      user,
+    });
+  } catch (error) {
+    console.error('Error updating user image:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 export {
   createB2BUser,
   getB2BUsers,
@@ -726,5 +755,5 @@ export {
   removeMandiFromList,
   getUserMandis,
   getUniqueCitiesAndStates,
-  
+  updateUserImage
 };

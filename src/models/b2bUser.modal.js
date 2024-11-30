@@ -3,6 +3,7 @@ import validator from 'validator';
 import toJSON from './plugins/toJSON.plugin.js';
 import paginate from './plugins/paginate.plugin.js';
 
+
 const subCategorySchema = new mongoose.Schema({
   name: {
     type: String,
@@ -130,6 +131,10 @@ const b2bUserSchema = mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Mandi'
   }],
+  image:{
+    type:String,
+    required:false
+  }
 
   },
   {
