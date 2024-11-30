@@ -238,6 +238,80 @@ const getFilteredUsersByRole = async (req, res) => {
   }
 };
 
+const getUserDetailsWithCategoryAndSubCategory = async (req, res) => {
+  try {
+    const { userId, categoryId, subCategoryId } = req.body;
+
+    // Validate input
+    if (!userId || !categoryId || !subCategoryId) {
+      return res.status(400).json({
+        success: false,
+        message: 'userId, categoryId, and subCategoryId are required',
+      });
+    }
+
+    // Fetch user details
+    const user = await B2BUser.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Fetch user address
+    const userAddresses = await B2BAddress.find({ userId });
+    if (!userAddresses.length) {
+      return res.status(404).json({
+        success: false,
+        message: 'User address not found',
+      });
+    }
+
+    // Filter category and subcategory data
+    const filteredCategory = user.category
+      .filter((category) => category._id.toString() === categoryId)
+      .map((category) => ({
+        ...category,
+        sub_category: category.sub_category.filter(
+          (sub) => sub._id.toString() === subCategoryId
+        ),
+      }))
+      .find((category) => category.sub_category.length > 0); // Ensure at least one matching subcategory
+
+    if (!filteredCategory) {
+      return res.status(404).json({
+        success: false,
+        message: 'Category or subcategory not found for the user',
+      });
+    }
+
+    // Prepare the response
+    const response = {
+      userDetails: {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        registerAs: user.registerAs,
+      },
+      addresses: userAddresses,
+      category: filteredCategory,
+    };
+
+    res.status(200).json({
+      success: true,
+      data: response,
+    });
+  } catch (error) {
+    console.error('Error fetching user details with category and subcategory:', error);
+    res.status(500).json({
+      success: false,
+      message: 'An error occurred while processing your request',
+      error: error.message,
+    });
+  }
+};
+
 
 export {
   createOrder,
@@ -246,5 +320,6 @@ export {
   updateOrder,
   deleteOrder,
   getOrdersByUserId,
-  getFilteredUsersByRole
+  getFilteredUsersByRole,
+  getUserDetailsWithCategoryAndSubCategory
 };
