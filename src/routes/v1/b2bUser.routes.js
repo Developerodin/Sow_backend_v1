@@ -33,7 +33,8 @@ import {
   getUserMandis,
   getUniqueCitiesAndStates,
   updateUserImage,
-  getUserImage
+  getUserImage,
+  getInactiveHistory
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
@@ -42,6 +43,7 @@ const b2bRoute = express.Router();
 b2bRoute.post('/generateOTP', generateOTPController);
 b2bRoute.post('/loginWithOTP', loginWithOTPController);
 b2bRoute.post('/profilepic', updateUserImage);
+b2bRoute.post('/rateshistory', getInactiveHistory);
 b2bRoute.get('/profilepic/:userId', getUserImage);
 // Update user status
 b2bRoute.patch('/updateStatus/:userId', updateUserStatus);

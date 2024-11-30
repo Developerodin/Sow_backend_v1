@@ -750,6 +750,69 @@ const getUserImage = async (req, res) => {
   }
 };
 
+
+
+const getInactiveHistory = async (req, res) => {
+  try {
+    const { userId, categoryName, timePeriod } = req.body;
+
+    // Validate inputs
+    if (!userId || !categoryName || !timePeriod) {
+      return res.status(400).json({ message: 'userId, categoryName, and timePeriod are required.' });
+    }
+
+    // Determine the time range based on the timePeriod
+    const timePeriods = {
+      today: new Date(new Date().setHours(0, 0, 0, 0)),
+      week: new Date(new Date().setDate(new Date().getDate() - 7)),
+      month: new Date(new Date().setMonth(new Date().getMonth() - 1)),
+      '3month': new Date(new Date().setMonth(new Date().getMonth() - 3)),
+      '6month': new Date(new Date().setMonth(new Date().getMonth() - 6)),
+      year: new Date(new Date().setFullYear(new Date().getFullYear() - 1)),
+    };
+
+    const fromDate = timePeriods[timePeriod];
+    if (!fromDate) {
+      return res.status(400).json({ message: 'Invalid time period specified.' });
+    }
+
+    // Query the user and category data
+    const user = await B2BUser.findById(userId).lean();
+    if (!user) {
+      return res.status(404).json({ message: 'User not found.' });
+    }
+
+    const category = user.category.find((cat) => cat.name === categoryName);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found.' });
+    }
+
+    // Extract and filter inactive histories within the time period
+    const inactiveHistories = [];
+    category.sub_category.forEach((subCategory) => {
+      const filteredHistory = subCategory.history.filter(
+        (entry) =>
+          entry.status === 'inactive' && new Date(entry.updatedAt) >= fromDate
+      );
+      if (filteredHistory.length > 0) {
+        inactiveHistories.push({
+          subCategoryName: subCategory.name,
+          history: filteredHistory,
+        });
+      }
+    });
+
+    // Return the result
+    res.status(200).json({
+      message: 'Inactive histories fetched successfully.',
+      data: inactiveHistories,
+    });
+  } catch (error) {
+    console.error('Error fetching inactive histories:', error);
+    res.status(500).json({ message: 'Internal server error.', error: error.message });
+  }
+};
+
 export {
   createB2BUser,
   getB2BUsers,
@@ -781,5 +844,6 @@ export {
   getUserMandis,
   getUniqueCitiesAndStates,
   updateUserImage,
-  getUserImage
+  getUserImage,
+  getInactiveHistory
 };
