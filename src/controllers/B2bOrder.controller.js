@@ -393,6 +393,37 @@ const getNewOrdersForUser = async (req, res) => {
   }
 };
 
+const updateOrderStatus = async (req, res) => {
+  try {
+    const { orderId,status } = req.body; // Extract new status from request body
+
+    // Validate the status value against allowed statuses
+    const allowedStatuses = ['New', 'Pending', 'Accepted', 'Rejected', 'Completed'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Invalid order status.' });
+    }
+
+    // Find the order by ID and update the status
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { orderStatus: status },
+      { new: true } // Return the updated document
+    )
+
+    if (!updatedOrder) {
+      return res.status(404).json({ message: 'Order not found.' });
+    }
+
+    res.status(200).json({
+      status: "updated",
+      message: 'Order status updated successfully.',
+    });
+  } catch (error) {
+    console.error('Error updating order status:', error.message);
+    res.status(500).json({ message: 'An error occurred while updating order status.' });
+  }
+};
+
 
 
 export {
@@ -406,5 +437,6 @@ export {
   getUserDetailsWithCategoryAndSubCategory,
   getUserOrdersById,
   filterOrdersByUserId,
-  getNewOrdersForUser
+  getNewOrdersForUser,
+  updateOrderStatus
 };
