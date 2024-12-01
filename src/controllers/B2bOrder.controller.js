@@ -336,7 +336,7 @@ const filterOrdersByUserId = async (req, res) => {
     // Define query filters
     const statusFilter =
       type === 'upcoming'
-        ? { orderStatus: 'Pending' }
+      ? { orderStatus: { $in: ['Pending', 'New'] } }
         : { orderStatus: { $in: ['Rejected', 'Completed'] } };
 
     const userFilter =

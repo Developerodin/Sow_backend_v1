@@ -687,3 +687,340 @@ export default router;
  *                 type: string
  *                 example: "Error message"
  */
+
+/**
+ * @swagger
+ * /b2bOrder/filterorders:
+ *   post:
+ *     summary: Filter orders by user ID
+ *     description: Retrieve orders filtered by user ID, type, and action.
+ *     tags: [B2bOrders]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - type
+ *               - action
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user
+ *               type:
+ *                 type: string
+ *                 description: Type of orders to filter (e.g., 'upcoming', 'past')
+ *               action:
+ *                 type: string
+ *                 description: Action type (e.g., 'sell', 'purchase')
+ *             example:
+ *               userId: "63b8e5b934e3e3f7d4a1c6f5"
+ *               type: "upcoming"
+ *               action: "sell"
+ *     responses:
+ *       "200":
+ *         description: Orders filtered successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                   orderNo:
+ *                     type: string
+ *                   category:
+ *                     type: string
+ *                   orderBy:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                   orderTo:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                   location:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       address:
+ *                         type: string
+ *                       city:
+ *                         type: string
+ *                       state:
+ *                         type: string
+ *                   subCategory:
+ *                     type: string
+ *                   weight:
+ *                     type: string
+ *                   unit:
+ *                     type: string
+ *                   notes:
+ *                     type: string
+ *                   value:
+ *                     type: number
+ *                   totalPrice:
+ *                     type: number
+ *                   photos:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   orderStatus:
+ *                     type: string
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *                   updatedAt:
+ *                     type: string
+ *                     format: date-time
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ *       "500":
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * components:
+ *   responses:
+ *     InvalidInput:
+ *       description: Invalid input
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Invalid input"
+ *     NotFound:
+ *       description: Not Found
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "No orders found for the specified criteria."
+ *     ServerError:
+ *       description: Server error
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "An error occurred while filtering orders."
+ */
+
+
+/**
+ * @swagger
+ * /b2bOrder/getNewOrdersForUser:
+ *   post:
+ *     summary: Get new orders for a user
+ *     description: Retrieve new orders for a user based on the specified period.
+ *     tags: [B2bOrders]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - period
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: ID of the user
+ *               period:
+ *                 type: string
+ *                 description: Period to filter orders (e.g., 'today', 'last-week', 'last-month', 'last-3-months', 'last-6-months', 'all')
+ *             example:
+ *               userId: "63b8e5b934e3e3f7d4a1c6f5"
+ *               period: "today"
+ *     responses:
+ *       "200":
+ *         description: New orders retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                   orderNo:
+ *                     type: string
+ *                   category:
+ *                     type: string
+ *                   orderBy:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                   orderTo:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                   location:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       address:
+ *                         type: string
+ *                       city:
+ *                         type: string
+ *                       state:
+ *                         type: string
+ *                   subCategory:
+ *                     type: string
+ *                   weight:
+ *                     type: string
+ *                   unit:
+ *                     type: string
+ *                   notes:
+ *                     type: string
+ *                   value:
+ *                     type: number
+ *                   totalPrice:
+ *                     type: number
+ *                   photos:
+ *                     type: array
+ *                     items:
+ *                       type: string
+ *                   orderStatus:
+ *                     type: string
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *                   updatedAt:
+ *                     type: string
+ *                     format: date-time
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ *       "500":
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * /b2bOrder/updateOrderStatus:
+ *   post:
+ *     summary: Update order status
+ *     description: Update the status of an order.
+ *     tags: [B2bOrders]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderId
+ *               - status
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *                 description: ID of the order
+ *               status:
+ *                 type: string
+ *                 description: New status of the order
+ *                 enum:
+ *                   - New
+ *                   - Pending
+ *                   - Accepted
+ *                   - Rejected
+ *                   - Completed
+ *             example:
+ *               orderId: "63b8e5b934e3e3f7d4a1c6f5"
+ *               status: "Accepted"
+ *     responses:
+ *       "200":
+ *         description: Order status updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "updated"
+ *                 message:
+ *                   type: string
+ *                   example: "Order status updated successfully."
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ *       "500":
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * components:
+ *   responses:
+ *     InvalidInput:
+ *       description: Invalid input
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Invalid input"
+ *     NotFound:
+ *       description: Not Found
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "No new orders found for this user."
+ *     ServerError:
+ *       description: Server error
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "An error occurred while fetching new orders."
+ */
