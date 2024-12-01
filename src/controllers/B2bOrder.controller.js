@@ -64,11 +64,11 @@ const getAllOrders = async (req, res) => {
 const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
-      .populate("category", "name")
+      
       .populate("orderBy", "name registerAs")
       .populate("orderTo", "name registerAs")
       .populate("location", "googleAddress")
-      .populate("subCategory", "name");
+      
 
     if (!order) {
       return res.status(404).json({ message: "Order not found" });
@@ -123,10 +123,9 @@ const getOrdersByUserId = async (req, res) => {
     const orders = await Order.find({
       $or: [{ orderBy: userId }, { orderTo: userId }],
     })
-      
       .populate("location", "googleAddress")
       .populate("orderBy", "name registerAs")
-      .populate("orderTo", "name registerAs")
+      .populate("orderTo", "name registerAs");
 
     if (orders.length === 0) {
       return res.status(404).json({ message: "No orders found for this user" });
@@ -137,7 +136,6 @@ const getOrdersByUserId = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
-
 
 
 const getFilteredUsersByRole = async (req, res) => {

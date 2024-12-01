@@ -234,9 +234,93 @@ export default router;
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/B2bOrder'
+ *               type: object
+ *               properties:
+ *                 _id:
+ *                   type: string
+ *                 orderNo:
+ *                   type: string
+ *                 category:
+ *                   type: string
+ *                 orderBy:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     registerAs:
+ *                       type: string
+ *                 orderTo:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *                     registerAs:
+ *                       type: string
+ *                 location:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                     googleAddress:
+ *                       type: string
+ *                 subCategory:
+ *                   type: string
+ *                 weight:
+ *                   type: string
+ *                 unit:
+ *                   type: string
+ *                 notes:
+ *                   type: string
+ *                 value:
+ *                   type: number
+ *                 totalPrice:
+ *                   type: number
+ *                 photos:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 orderStatus:
+ *                   type: string
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *                 updatedAt:
+ *                   type: string
+ *                   format: date-time
  *       "404":
  *         $ref: '#/components/responses/NotFound'
+ *       "500":
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * components:
+ *   responses:
+ *     NotFound:
+ *       description: Not Found
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Order not found"
+ *     ServerError:
+ *       description: Server error
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "An error occurred while retrieving the order"
  */
 
 /**
