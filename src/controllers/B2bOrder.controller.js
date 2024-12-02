@@ -1,7 +1,7 @@
 import Order from "../models/B2bOrder.model.js";
 import B2BUser from "../models/b2bUser.modal.js";
 import B2BAddress from "../models/b2buserAddress.model.js";
-
+import moment from "moment";
 // Create a new order
 const createOrder = async (req, res) => {
   try {
@@ -334,7 +334,7 @@ const filterOrdersByUserId = async (req, res) => {
     // Define query filters
     const statusFilter =
       type === 'upcoming'
-      ? { orderStatus: { $in: ['Pending', 'New'] } }
+      ? { orderStatus: 'Pending' }
         : { orderStatus: { $in: ['Rejected', 'Completed'] } };
 
     const userFilter =
@@ -378,16 +378,16 @@ const getNewOrdersForUser = async (req, res) => {
       case 'today':
         startDate = moment().startOf('day').toDate();
         break;
-      case 'last-week':
+      case 'last week':
         startDate = moment().subtract(1, 'week').startOf('day').toDate();
         break;
-      case 'last-month':
+      case 'last month':
         startDate = moment().subtract(1, 'month').startOf('day').toDate();
         break;
-      case 'last-3-months':
+      case 'last 3 months':
         startDate = moment().subtract(3, 'months').startOf('day').toDate();
         break;
-      case 'last-6-months':
+      case 'last 6 months':
         startDate = moment().subtract(6, 'months').startOf('day').toDate();
         break;
       case 'all':
@@ -397,7 +397,7 @@ const getNewOrdersForUser = async (req, res) => {
 
     // Build the query with optional date filter
     const query = {
-      orderTo: userId,
+      orderBy: userId,
       orderStatus: 'New',
     };
 
@@ -428,7 +428,7 @@ const updateOrderStatus = async (req, res) => {
     const { orderId,status } = req.body; // Extract new status from request body
 
     // Validate the status value against allowed statuses
-    const allowedStatuses = ['New', 'Pending', 'Accepted', 'Rejected', 'Completed'];
+    const allowedStatuses = ['New', 'Pending', 'Rejected', 'Completed'];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ message: 'Invalid order status.' });
     }
