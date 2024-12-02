@@ -269,72 +269,7 @@ const getUniqueCitiesAndStates = async (req, res) => {
 
 // KYC
 
-const addB2BKycDetails = async (req, res) => {
-  try {
-    const { userId, panNumber, gstinNumber, panImage, gstinImage } = req.body;
 
-    const kyc = new B2BKYC({
-      userId,
-      panNumber,
-      gstinNumber,
-      panImage,
-      gstinImage,
-    });
-
-    await kyc.save();
-    res.status(201).json({ success: true, message: 'KYC details added successfully', data: kyc });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
- const deleteB2BKycDetails = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const kyc = await B2BKYC.findByIdAndDelete(id);
-
-    if (!kyc) {
-      return res.status(404).json({ success: false, message: 'KYC details not found' });
-    }
-
-    res.status(200).json({ success: true, message: 'KYC details deleted successfully' });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
- const updateB2BKycDetails = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const updatedKyc = await B2BKYC.findByIdAndUpdate(id, req.body, { new: true });
-
-    if (!updatedKyc) {
-      return res.status(404).json({ success: false, message: 'KYC details not found' });
-    }
-
-    res.status(200).json({ success: true, message: 'KYC details updated successfully', data: updatedKyc });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
-
- const getB2BKycDetailsByUserId = async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    const kycDetails = await B2BKYC.findOne({ userId });
-
-    if (!kycDetails) {
-      return res.status(404).json({ success: false, message: 'KYC details not found for this user' });
-    }
-
-    res.status(200).json({ success: true, data: kycDetails });
-  } catch (error) {
-    res.status(400).json({ success: false, message: error.message });
-  }
-};
 
 // category 
 
@@ -813,6 +748,114 @@ const getInactiveHistory = async (req, res) => {
   }
 };
 
+
+
+
+
+// KYC USER
+
+const uploadOwnerImage = async (req, res) => {
+  try {
+
+    const { kycId,ownerImage } = req.body; // Assuming the image URL/path is sent in the request body
+
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+
+    kyc.OwnerImage = ownerImage;
+    await kyc.save();
+
+    res.status(200).json({ message: 'Owner image uploaded successfully', kyc });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const uploadWarehouseImage = async (req, res) => {
+  try {
+   
+    const { kycId,warehouseImage } = req.body; // Assuming the image URL/path is sent in the request body
+
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+
+    kyc.WareHouseImage = warehouseImage;
+    await kyc.save();
+
+    res.status(200).json({ message: 'Warehouse image uploaded successfully', kyc });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const addB2BKycDetails = async (req, res) => {
+  try {
+    const { userId, panNumber, gstinNumber, panImage, gstinImage } = req.body;
+
+    const kyc = new B2BKYC({
+      userId,
+      panNumber,
+      gstinNumber,
+      panImage,
+      gstinImage,
+    });
+
+    await kyc.save();
+    res.status(201).json({ success: true, message: 'KYC details added successfully', data: kyc });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+ const deleteB2BKycDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const kyc = await B2BKYC.findByIdAndDelete(id);
+
+    if (!kyc) {
+      return res.status(404).json({ success: false, message: 'KYC details not found' });
+    }
+
+    res.status(200).json({ success: true, message: 'KYC details deleted successfully' });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+ const updateB2BKycDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const updatedKyc = await B2BKYC.findByIdAndUpdate(id, req.body, { new: true });
+
+    if (!updatedKyc) {
+      return res.status(404).json({ success: false, message: 'KYC details not found' });
+    }
+
+    res.status(200).json({ success: true, message: 'KYC details updated successfully', data: updatedKyc });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+ const getB2BKycDetailsByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const kycDetails = await B2BKYC.findOne({ userId });
+
+    if (!kycDetails) {
+      return res.status(404).json({ success: false, message: 'KYC details not found for this user' });
+    }
+
+    res.status(200).json({ success: true, data: kycDetails });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+
 export {
   createB2BUser,
   getB2BUsers,
@@ -845,5 +888,7 @@ export {
   getUniqueCitiesAndStates,
   updateUserImage,
   getUserImage,
-  getInactiveHistory
+  getInactiveHistory,
+  uploadOwnerImage,
+  uploadWarehouseImage
 };

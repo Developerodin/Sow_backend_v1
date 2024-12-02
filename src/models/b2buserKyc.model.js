@@ -9,7 +9,7 @@ const kycSchema = mongoose.Schema(
     },
     panNumber: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
       validate(value) {
         if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value)) {
@@ -32,6 +32,14 @@ const kycSchema = mongoose.Schema(
       required: false, // Store the file path or URL of the uploaded PAN image
     },
     gstinImage: {
+      type: String,
+      required: false, // Store the file path or URL of the uploaded GSTIN image
+    },
+    WareHouseImage: {
+      type: String,
+      required: false, // Store the file path or URL of the uploaded GSTIN image
+    },
+    OwnerImage: {
       type: String,
       required: false, // Store the file path or URL of the uploaded GSTIN image
     },

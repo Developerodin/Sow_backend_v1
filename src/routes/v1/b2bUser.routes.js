@@ -34,7 +34,9 @@ import {
   getUniqueCitiesAndStates,
   updateUserImage,
   getUserImage,
-  getInactiveHistory
+  getInactiveHistory,
+  uploadOwnerImage,
+  uploadWarehouseImage
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
@@ -88,11 +90,13 @@ b2bRoute.put('/address/:addressId', auth('manageB2BUsers'), validate(b2bUserVali
 // Add a B2B KYC details
 b2bRoute.post('/kyc', addB2BKycDetails);
 
+b2bRoute.post('/kycOwnerImage', uploadOwnerImage);
+b2bRoute.post('/kycWareHouseImage', uploadWarehouseImage);
 // Delete a B2B KYC details
-b2bRoute.delete('/kyc/:id', auth('manageB2BUsers'), validate(b2bUserValidation.deleteB2BKycDetails), deleteB2BKycDetails);
+b2bRoute.delete('/kyc/:id', deleteB2BKycDetails);
 
 // Update a B2B KYC details
-b2bRoute.put('/kyc/:id', auth('manageB2BUsers'), validate(b2bUserValidation.updateB2BKycDetails), updateB2BKycDetails);
+b2bRoute.put('/kyc/:id', updateB2BKycDetails);
 
 // Fetch all B2B addresses by user ID
 b2bRoute.get('/address/:userId', getB2BAllAddressesByUserId);
