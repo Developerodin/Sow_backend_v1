@@ -20,7 +20,7 @@ const createOrder = async (req, res) => {
       orderStatus,
     } = req.body;
 
-    
+    const images = JSON.parse(photos)
     // Create the new order object without orderNo (it will be generated automatically)
     const newOrder = new Order({
       category,
@@ -33,7 +33,7 @@ const createOrder = async (req, res) => {
       notes,
       value,
       totalPrice,
-      photos,
+      photos:images,
       orderStatus,
     });
 
