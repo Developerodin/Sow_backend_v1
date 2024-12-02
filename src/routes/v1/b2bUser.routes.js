@@ -60,16 +60,16 @@ b2bRoute.get('/:userId/mandis', getUserMandis);
 b2bRoute.post('/', validate(b2bUserValidation.createB2BUser), createB2BUser);
 
 // Fetch all B2B users
-b2bRoute.get('/', auth('getB2BUsers'), validate(b2bUserValidation.getB2BUsers), getB2BUsers);
+b2bRoute.get('/',  getB2BUsers);
 
 // Fetch a B2B user by ID
-b2bRoute.get('/:userId', validate(b2bUserValidation.getB2BUser), getB2BUser);
+b2bRoute.get('/:userId', getB2BUser);
 
 // Update a B2B user by ID
-b2bRoute.put('/:userId', auth('manageB2BUsers'), validate(b2bUserValidation.updateB2BUser), updateB2BUser);
+b2bRoute.put('/:userId',  updateB2BUser);
 
 // Delete a B2B user by ID
-b2bRoute.delete('/:userId', validate(b2bUserValidation.deleteB2BUser), deleteB2BUser);
+b2bRoute.delete('/:userId', deleteB2BUser);
 
 // Add a B2B address
 b2bRoute.post('/address', addB2BAddress);
@@ -77,22 +77,21 @@ b2bRoute.post('/address', addB2BAddress);
 // Delete a B2B address
 b2bRoute.delete(
   '/address/:addressId',
-  auth('manageB2BUsers'),
-  validate(b2bUserValidation.deleteB2BAddress),
+
   deleteB2BAddress
 );
 
 // Update a B2B address
-b2bRoute.put('/address/:addressId', auth('manageB2BUsers'), validate(b2bUserValidation.updateB2BAddress), updateB2BAddress);
+b2bRoute.put('/address/:addressId',  updateB2BAddress);
 
 // Add a B2B KYC details
 b2bRoute.post('/kyc', addB2BKycDetails);
 
 // Delete a B2B KYC details
-b2bRoute.delete('/kyc/:id', auth('manageB2BUsers'), validate(b2bUserValidation.deleteB2BKycDetails), deleteB2BKycDetails);
+b2bRoute.delete('/kyc/:id',  deleteB2BKycDetails);
 
 // Update a B2B KYC details
-b2bRoute.put('/kyc/:id', auth('manageB2BUsers'), validate(b2bUserValidation.updateB2BKycDetails), updateB2BKycDetails);
+b2bRoute.put('/kyc/:id',  updateB2BKycDetails);
 
 // Fetch all B2B addresses by user ID
 b2bRoute.get('/address/:userId', getB2BAllAddressesByUserId);
@@ -190,8 +189,6 @@ export default b2bRoute;
  *     summary: Get all B2B users
  *     description: Only admins can retrieve all B2B users.
  *     tags: [B2BUsers]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: name
@@ -284,8 +281,6 @@ export default b2bRoute;
  *     summary: Update a B2B user
  *     description: Logged in users can only update their own information. Only admins can update other users.
  *     tags: [B2BUsers]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: userId
@@ -343,8 +338,6 @@ export default b2bRoute;
  *     summary: Delete a B2B user
  *     description: Logged in users can delete only themselves. Only admins can delete other users.
  *     tags: [B2BUsers]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: userId
