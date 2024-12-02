@@ -790,7 +790,7 @@ const uploadWarehouseImage = async (req, res) => {
 
 const addB2BKycDetails = async (req, res) => {
   try {
-    const { userId, panNumber, gstinNumber, panImage, gstinImage } = req.body;
+    const { userId, panNumber, gstinNumber, panImage, gstinImage,OwnerImage,WareHouseImage } = req.body;
 
     const kyc = new B2BKYC({
       userId,
@@ -798,6 +798,8 @@ const addB2BKycDetails = async (req, res) => {
       gstinNumber,
       panImage,
       gstinImage,
+      OwnerImage,
+      WareHouseImage
     });
 
     await kyc.save();
