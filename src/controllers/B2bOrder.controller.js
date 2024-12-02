@@ -20,7 +20,7 @@ const createOrder = async (req, res) => {
       orderStatus,
     } = req.body;
 
-    
+    const images = photos !== "" ? JSON.parse(photos) : [] || []
     // Create the new order object without orderNo (it will be generated automatically)
     const newOrder = new Order({
       category,
@@ -33,7 +33,7 @@ const createOrder = async (req, res) => {
       notes,
       value,
       totalPrice,
-      photos,
+      photos:images,
       orderStatus,
     });
 
@@ -397,7 +397,10 @@ const getNewOrdersForUser = async (req, res) => {
 
     // Build the query with optional date filter
     const query = {
-      orderBy: userId,
+      $or: [
+        { orderBy: userId },
+        { orderTo: userId },
+      ],
       orderStatus: 'New',
     };
 
