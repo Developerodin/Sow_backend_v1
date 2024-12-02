@@ -397,7 +397,10 @@ const getNewOrdersForUser = async (req, res) => {
 
     // Build the query with optional date filter
     const query = {
-      orderBy: userId,
+      $or: [
+        { orderBy: userId },
+        { orderTo: userId },
+      ],
       orderStatus: 'New',
     };
 
