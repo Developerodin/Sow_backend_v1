@@ -856,6 +856,28 @@ const addB2BKycDetails = async (req, res) => {
 };
 
 
+const changeKYCStatus = async (req, res) => {
+  try {
+
+    const {kycId, status, remarks } = req.body; // Assuming status and optional remarks are sent in the request body
+
+    if (!['pending', 'approved', 'rejected'].includes(status)) {
+      return res.status(400).json({ message: 'Invalid status value' });
+    }
+
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+
+    kyc.status = status;
+    if (remarks) kyc.remarks = remarks;
+    await kyc.save();
+
+    res.status(200).json({ message: 'KYC status updated successfully', kyc });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export {
   createB2BUser,
   getB2BUsers,
@@ -890,5 +912,6 @@ export {
   getUserImage,
   getInactiveHistory,
   uploadOwnerImage,
-  uploadWarehouseImage
+  uploadWarehouseImage,
+  changeKYCStatus
 };

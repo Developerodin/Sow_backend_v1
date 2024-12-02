@@ -36,7 +36,8 @@ import {
   getUserImage,
   getInactiveHistory,
   uploadOwnerImage,
-  uploadWarehouseImage
+  uploadWarehouseImage,
+  changeKYCStatus
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
@@ -88,6 +89,7 @@ b2bRoute.put('/address/:addressId',  updateB2BAddress);
 
 // Add a B2B KYC details
 b2bRoute.post('/kyc', addB2BKycDetails);
+b2bRoute.post('/kyc-status', changeKYCStatus);
 
 b2bRoute.post('/kycOwnerImage', uploadOwnerImage);
 b2bRoute.post('/kycWareHouseImage', uploadWarehouseImage);
