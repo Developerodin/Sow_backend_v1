@@ -53,7 +53,7 @@
   resolved "https://registry.npmjs.org/@babel/compat-data/-/compat-data-7.14.7.tgz"
   integrity sha512-nS6dZaISCXJ3+518CWiBfEr//gHyMO02uDxBkXTKZDN5POruCnOZ1N4YBRZDCabwF8nZMWBpRxIicmXtBs+fvw==
 
-"@babel/core@^7.0.0", "@babel/core@^7.0.0-0", "@babel/core@^7.1.0", "@babel/core@^7.7.5":
+"@babel/core@^7.1.0", "@babel/core@^7.7.5":
   version "7.14.6"
   resolved "https://registry.npmjs.org/@babel/core/-/core-7.14.6.tgz"
   integrity sha512-gJnOEWSqTk96qG5BoIrl5bVtc23DCycmIePPYnamY9RboYdI4nFy5vAQMSl81O5K/W0sLDWfGysnOECC+KUUCA==
@@ -1032,7 +1032,7 @@ acorn-walk@^7.1.1:
   resolved "https://registry.npmjs.org/acorn-walk/-/acorn-walk-7.2.0.tgz"
   integrity sha512-OPdCF6GsMIP+Az+aWfAAOEt2/+iVDKE7oy6lJ098aoe59oAmK76qV6Gw60SbZ8jHuG2wH058GF4pLFbYamYrVA==
 
-"acorn@^6.0.0 || ^7.0.0 || ^8.0.0", acorn@^7.1.1, acorn@^7.4.0:
+acorn@^7.1.1, acorn@^7.4.0:
   version "7.4.1"
   resolved "https://registry.npmjs.org/acorn/-/acorn-7.4.1.tgz"
   integrity sha512-nQyp0o1/mNdbTO1PO6kHkwSrmgZ0MT/jCCpNiwbUjGoRN4dlBhqJtoQuCnEOKzgTVwg0ZWiCoQy6SxMebQVh8A==
@@ -1293,7 +1293,7 @@ axios@^0.21.0:
   dependencies:
     follow-redirects "^1.14.0"
 
-axios@^1.7.7:
+axios@^1.7.8:
   version "1.7.8"
   resolved "https://registry.npmjs.org/axios/-/axios-1.7.8.tgz"
   integrity sha512-Uu0wb7KNqK2t5K+YQyVCLM76prD5sRFjKHbJYCP1J7JFGEQ6nN7HWn9+04LAeiJ3ji54lgS/gZCH1oxyrf1SPw==
@@ -2353,7 +2353,7 @@ end-of-stream@^1.1.0:
   dependencies:
     once "^1.4.0"
 
-enquirer@^2.3.5, enquirer@^2.3.6, "enquirer@>= 2.3.0 < 3", enquirer@2.3.6:
+enquirer@^2.3.5, enquirer@^2.3.6, enquirer@2.3.6:
   version "2.3.6"
   resolved "https://registry.npmjs.org/enquirer/-/enquirer-2.3.6.tgz"
   integrity sha512-yjNnPr315/FjS4zIsUxYguYUPP2e1NK4d7E7ZOLiyYCcbFBiTMyID+2wvm2w6+pZ/odMA7cRkjhsPbltwBOrLg==
@@ -2482,7 +2482,7 @@ eslint-module-utils@^2.6.1:
     debug "^3.2.7"
     pkg-dir "^2.0.0"
 
-eslint-plugin-import@^2.18.2, eslint-plugin-import@^2.22.1:
+eslint-plugin-import@^2.18.2:
   version "2.23.4"
   resolved "https://registry.npmjs.org/eslint-plugin-import/-/eslint-plugin-import-2.23.4.tgz"
   integrity sha512-6/wP8zZRsnQFiR3iaPFgh5ImVRM1WN5NUWfTIRqwOdeiGJlBcSk82o1FEVq8yXmy4lkIzTo7YhHCIxlU/2HyEQ==
@@ -2561,7 +2561,7 @@ eslint-visitor-keys@^2.0.0:
   resolved "https://registry.npmjs.org/eslint-visitor-keys/-/eslint-visitor-keys-2.1.0.tgz"
   integrity sha512-0rSmRBzXgDzIsD6mGdJgevzgezI534Cer5L/vyMX0kHzT/jiB43jRhd9YUlMGYLQy2zprNmoT8qasCGtY+QaKw==
 
-eslint@*, "eslint@^2 || ^3 || ^4 || ^5 || ^6 || ^7.2.0", "eslint@^5.16.0 || ^6.8.0 || ^7.2.0", eslint@^7.0.0, eslint@>=5, eslint@>=5.0.0, eslint@>=7.0.0:
+eslint@^7.0.0:
   version "7.30.0"
   resolved "https://registry.npmjs.org/eslint/-/eslint-7.30.0.tgz"
   integrity sha512-VLqz80i3as3NdloY44BQSJpFw534L9Oh+6zJOUaViV4JPd+DaHwutqP7tcpkW3YiXbK6s05RZl7yl7cQn+lijg==
@@ -2763,7 +2763,7 @@ express-rate-limit@^5.0.0:
   resolved "https://registry.npmjs.org/express-rate-limit/-/express-rate-limit-5.3.0.tgz"
   integrity sha512-qJhfEgCnmteSeZAeuOKQ2WEIFTX5ajrzE0xS6gCOBCoRQcU+xEzQmgYQQTpzCcqUAAzTEtu4YEih4pnLfvNtew==
 
-express@^4.17.1, express@>=4.0.0:
+express@^4.17.1:
   version "4.17.1"
   resolved "https://registry.npmjs.org/express/-/express-4.17.1.tgz"
   integrity sha512-mHJ9O79RqluphRrcw2X/GTh3k9tVv8YcoyY4Kkh4WDMUYKRZUq0h1o0w2rrrxBqM7VoeUVqgb27xlEMXTnYt4g==
@@ -4118,7 +4118,7 @@ jest-resolve-dependencies@^26.6.3:
     jest-regex-util "^26.0.0"
     jest-snapshot "^26.6.2"
 
-jest-resolve@*, jest-resolve@^26.6.2:
+jest-resolve@^26.6.2:
   version "26.6.2"
   resolved "https://registry.npmjs.org/jest-resolve/-/jest-resolve-26.6.2.tgz"
   integrity sha512-sOxsZOq25mT1wRsfHcbtkInS+Ek7Q8jCHUB0ZUTP0tc/c41QHriU/NunqMfCUWsL4H3MHpvQD4QR9kSYhS7UvQ==
@@ -4920,7 +4920,7 @@ mongoose-legacy-pluralize@1.0.2:
   resolved "https://registry.npmjs.org/mongoose-legacy-pluralize/-/mongoose-legacy-pluralize-1.0.2.tgz"
   integrity sha512-Yo/7qQU4/EyIS8YDFSeenIvXxZN+ld7YdV9LqFVQJzTLye8unujAWPZ4NWKfFA+RNjh+wvTWKY9Z3E5XM6ZZiQ==
 
-mongoose@*, mongoose@^5.7.7:
+mongoose@^5.7.7:
   version "5.13.20"
   resolved "https://registry.npmjs.org/mongoose/-/mongoose-5.13.20.tgz"
   integrity sha512-TjGFa/XnJYt+wLmn8y9ssjyO2OhBMeEBtOHb9iJM16EWu2Du6L1Q6zSiEK2ziyYQM8agb4tumNIQFzqbxId7MA==
@@ -5265,11 +5265,6 @@ onetime@^5.1.0, onetime@^5.1.2:
   integrity sha512-kbpaSSGJTWdAY5KPVeMOKXSrPtr8C8C7wodJbcsd51jRnmD+GZu8Y0VoU6Dm5Z4vWr0Ig/1NKuWRKf7j5aaYSg==
   dependencies:
     mimic-fn "^2.1.0"
-
-openapi-types@>=7:
-  version "12.1.3"
-  resolved "https://registry.npmjs.org/openapi-types/-/openapi-types-12.1.3.tgz"
-  integrity sha512-N4YtSYJqghVu4iek2ZUvcN/0aqH1kRDuNqzcycDxhOUpg7GdvLa2F3DgS6yBNhInhv2r/6I0Flkn7CqL8+nIcw==
 
 optional-require@^1.1.8:
   version "1.1.8"
@@ -5688,7 +5683,7 @@ prettier-linter-helpers@^1.0.0:
   dependencies:
     fast-diff "^1.1.2"
 
-prettier@^2.0.5, prettier@>=1.13.0:
+prettier@^2.0.5:
   version "2.3.2"
   resolved "https://registry.npmjs.org/prettier/-/prettier-2.3.2.tgz"
   integrity sha512-lnJzDfJ66zkMy58OL5/NY5zp70S7Nz6KqcKkXYzn2tMVrNxvbqaBpg7H3qHaLxCJ5lNMsGuM8+ohS7cZrthdLQ==
@@ -7057,11 +7052,6 @@ typedarray-to-buffer@^3.1.5:
   integrity sha512-zdu8XMNEDepKKR+XYOXAVPtWui0ly0NtohUscw+UmaHiAWT8hrV1rr//H6V+0DvJ3OQ19S979M0laLfX8rm82Q==
   dependencies:
     is-typedarray "^1.0.0"
-
-"typescript@>=2.8.0 || >= 3.2.0-dev || >= 3.3.0-dev || >= 3.4.0-dev || >= 3.5.0-dev || >= 3.6.0-dev || >= 3.6.0-beta || >= 3.7.0-dev || >= 3.7.0-beta":
-  version "5.7.2"
-  resolved "https://registry.npmjs.org/typescript/-/typescript-5.7.2.tgz"
-  integrity sha512-i5t66RHxDvVN40HfDd1PsEThGNnlMCMT3jMUuoh9/0TaqWevNontacunWyN02LA9/fIbEWlcHZcgTKb9QoaLfg==
 
 unbox-primitive@^1.0.1:
   version "1.0.1"

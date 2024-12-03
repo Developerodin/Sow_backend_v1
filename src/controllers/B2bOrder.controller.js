@@ -3,6 +3,7 @@ import Order from "../models/B2bOrder.model.js";
 import B2BUser from "../models/b2bUser.modal.js";
 import B2BAddress from "../models/b2buserAddress.model.js";
 import moment from "moment";
+import { sendNotificationByUserId } from "./pushNotifications.controller.js";
 // Create a new order
 const createOrder = async (req, res) => {
   try {
@@ -53,6 +54,14 @@ const createOrder = async (req, res) => {
     });
 
     await newNotification.save();
+
+    const title = 'New Order';
+    const body = `Total Amount: ${totalPrice}`;
+    const data = { orderId: newOrder._id, otp };
+
+    // Send notification to the user who created the order
+    await sendNotificationByUserId(orderBy, title, body, data);
+    await sendNotificationByUserId(orderTo, title, body, data);
 
     res.status(201).json(newOrder);
   } catch (error) {
@@ -476,6 +485,14 @@ const updateOrderStatus = async (req, res) => {
 
     await newNotification.save();
 
+    const title = 'Order updated';
+    const body = `Total Amount: ${updatedOrder.totalPrice}`;
+    const data = { orderId: updatedOrder._id };
+
+    // Send notification to the user who created the order
+    await sendNotificationByUserId(updatedOrder.orderBy, title, body, data);
+    await sendNotificationByUserId(updatedOrder.orderTo, title, body, data);
+
     res.status(200).json({
       status: "updated",
       message: 'Order status updated successfully.',
@@ -524,6 +541,14 @@ const verifyOtpAndCompleteOrder = async (req, res) => {
     });
 
     await newNotification.save();
+
+    const title = 'Order completed successfully';
+    const body = `Total Amount: ${order.totalPrice}`;
+    const data = { orderId: order._id };
+
+    // Send notification to the user who created the order
+    await sendNotificationByUserId(order.orderBy, title, body, data);
+    await sendNotificationByUserId(order.orderTo, title, body, data);
     res.status(200).json({
       message: 'Order status updated to Completed successfully.',
       order,
