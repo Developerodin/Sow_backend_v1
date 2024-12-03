@@ -1,3 +1,4 @@
+import Notification from "../models/b2bNotification.js";
 import Order from "../models/B2bOrder.model.js";
 import B2BUser from "../models/b2bUser.modal.js";
 import B2BAddress from "../models/b2buserAddress.model.js";
@@ -19,7 +20,7 @@ const createOrder = async (req, res) => {
       photos,
       orderStatus,
     } = req.body;
-
+    const otp = Math.floor(1000 + Math.random() * 9000);
     const images = photos !== "" ? JSON.parse(photos) : [] || []
     // Create the new order object without orderNo (it will be generated automatically)
     const newOrder = new Order({
@@ -35,9 +36,24 @@ const createOrder = async (req, res) => {
       totalPrice,
       photos:images,
       orderStatus,
+      otp
     });
 
     await newOrder.save();
+    const notificationMessage = `A new order has been created: ${newOrder.orderNo}`;
+
+    const newNotification = new Notification({
+      notification: notificationMessage,
+      orderId: newOrder._id,
+      orderBy,
+      orderTo,
+      orderNo: newOrder.orderNo,
+      orderStatus : newOrder.orderStatus,
+      totalPrice: newOrder.totalPrice
+    });
+
+    await newNotification.save();
+
     res.status(201).json(newOrder);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -446,6 +462,19 @@ const updateOrderStatus = async (req, res) => {
     if (!updatedOrder) {
       return res.status(404).json({ message: 'Order not found.' });
     }
+    const notificationMessage = `order status updated: ${updatedOrder.orderNo}`;
+
+    const newNotification = new Notification({
+      notification: notificationMessage,
+      orderId: updatedOrder._id,
+      orderBy:updatedOrder.orderBy,
+      orderTo:updatedOrder.orderTo,
+      orderNo: updatedOrder.orderNo,
+      orderStatus : updatedOrder.orderStatus,
+      totalPrice: updatedOrder.totalPrice
+    });
+
+    await newNotification.save();
 
     res.status(200).json({
       status: "updated",
@@ -454,6 +483,103 @@ const updateOrderStatus = async (req, res) => {
   } catch (error) {
     console.error('Error updating order status:', error.message);
     res.status(500).json({ message: 'An error occurred while updating order status.' });
+  }
+};
+
+
+const verifyOtpAndCompleteOrder = async (req, res) => {
+  try {
+    const { orderId, otp } = req.body;
+
+    // Validate request body
+    if (!orderId || !otp) {
+      return res.status(400).json({ message: 'Order ID and OTP are required.' });
+    }
+
+    // Find the order by ID
+    const order = await Order.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found.' });
+    }
+
+    // Check if the provided OTP matches the order's OTP
+    if (order.otp !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP.' });
+    }
+
+    // Update the order status to 'Completed'
+    order.orderStatus = 'Completed';
+    await order.save();
+    const notificationMessage = `order status updated: ${order.orderNo}`;
+
+    const newNotification = new Notification({
+      notification: notificationMessage,
+      orderId: order._id,
+      orderBy:order.orderBy,
+      orderTo:order.orderTo,
+      orderNo: order.orderNo,
+      orderStatus : order.orderStatus,
+      totalPrice: order.totalPrice
+    });
+
+    await newNotification.save();
+    res.status(200).json({
+      message: 'Order status updated to Completed successfully.',
+      order,
+    });
+  } catch (error) {
+    console.error('Error verifying OTP and updating order status:', error);
+    res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
+
+const getUserSaleSummary = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Fetch all orders related to the user (both `orderBy` and `orderTo`)
+    const userOrders = await Order.find({
+      $or: [{ orderBy: userId }, { orderTo: userId }],
+    });
+
+    // Initialize totals
+    let netAmountEarned = 0;
+    let netScrapSold = 0;
+    let netScrapPending = 0;
+
+    // Calculate based on the order status
+    userOrders.forEach((order) => {
+      if (order.orderTo.toString() === userId) {
+        // Earnings for orders received
+        netAmountEarned += order.totalPrice;
+      }
+      if (order.orderStatus === "Completed" && order.orderBy.toString() === userId) {
+        // Scrap sold by the user
+        netScrapSold += parseFloat(order.weight || 0);
+      }
+      if (order.orderStatus === "Pending" && order.orderBy.toString() === userId) {
+        // Scrap pending by the user
+        netScrapPending += parseFloat(order.weight || 0);
+      }
+    });
+
+    // Return the calculated summary
+    res.status(200).json({
+      success: true,
+      data: {
+        netAmountEarned,
+        netScrapSold,
+        netScrapPending,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: "Error fetching user sale summary",
+      error: error.message,
+    });
   }
 };
 
@@ -471,5 +597,7 @@ export {
   getUserOrdersById,
   filterOrdersByUserId,
   getNewOrdersForUser,
-  updateOrderStatus
+  updateOrderStatus,
+  verifyOtpAndCompleteOrder,
+  getUserSaleSummary
 };

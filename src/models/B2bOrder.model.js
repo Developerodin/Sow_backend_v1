@@ -60,6 +60,10 @@ const orderSchema = mongoose.Schema(
             enum : ['New','Pending', 'Rejected', 'Completed'],
             default : 'New',
         },
+        otp: {
+            type: Number,
+            required: true,
+          }
     },
     {
         timestamps : true,

@@ -10,7 +10,9 @@ import {
   getUserDetailsWithCategoryAndSubCategory,
   filterOrdersByUserId,
   getNewOrdersForUser,
-  updateOrderStatus
+  updateOrderStatus,
+  verifyOtpAndCompleteOrder,
+  getUserSaleSummary
 } from "../../controllers/B2bOrder.controller.js";
 
 const router = express.Router();
@@ -41,6 +43,9 @@ router.post("/getNewOrdersForUser", getNewOrdersForUser);
 
 router.post("/getratedetails", getUserDetailsWithCategoryAndSubCategory);
 
+router.post("/markcomplete", verifyOtpAndCompleteOrder);
+
+router.get("/sale-summary/:userId", getUserSaleSummary);
 export default router;
 
 /**
