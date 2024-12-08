@@ -474,6 +474,59 @@ const updateSubCategory = async (req, res) => {
   }
 };
 
+const updateAllSubCategories = async (req, res) => {
+  try {
+    const { userId, categoryId } = req.params;
+    const { subCategories } = req.body; // Expecting an array of subcategories with their respective prices
+
+    // Find the user by ID
+    const user = await B2BUser.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Find the category by ID
+    const category = user.category.id(categoryId);
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    // Update the price of each subcategory within the category
+    subCategories.forEach(subCategoryUpdate => {
+      const subCategory = category.sub_category.id(subCategoryUpdate.subCategoryId);
+      if (subCategory) {
+        subCategory.history.push({
+          price: subCategory.price,
+          unit: subCategory.unit,
+          status: 'inactive',
+          updatedAt: subCategory.updatedAt,
+        });
+
+        subCategory.price = subCategoryUpdate.price;
+        subCategory.status = 'active';
+        subCategory.updatedAt = Date.now();
+      }
+    });
+
+    // Save the updated user document
+    await user.save();
+
+    res.status(200).json({
+      status: 'success',
+      message: 'All subcategories updated successfully',
+      data: category.sub_category,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: 'error',
+      message: error.message,
+    });
+  }
+};
+
+
+
 // Delete a subcategory by ID for a B2B user
 const deleteSubCategory = async (req, res) => {
   try {
@@ -915,5 +968,6 @@ export {
   getInactiveHistory,
   uploadOwnerImage,
   uploadWarehouseImage,
-  changeKYCStatus
+  changeKYCStatus,
+  updateAllSubCategories,
 };

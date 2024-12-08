@@ -37,7 +37,8 @@ import {
   getInactiveHistory,
   uploadOwnerImage,
   uploadWarehouseImage,
-  changeKYCStatus
+  changeKYCStatus,
+  updateAllSubCategories,
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
@@ -119,6 +120,7 @@ b2bRoute.delete('/:userId/category/:categoryId', deleteCategory);
 b2bRoute.post('/:userId/category/:categoryId/subcategory', addSubCategory);
 b2bRoute.put('/:userId/category/:categoryId/subcategory/:subCategoryId', updateSubCategory);
 b2bRoute.delete('/:userId/category/:categoryId/subcategory/:subCategoryId', deleteSubCategory);
+b2bRoute.put('/:userId/category/:categoryId/subcategory', updateAllSubCategories);
 
 export default b2bRoute;
 
@@ -1410,6 +1412,118 @@ export default b2bRoute;
  *               message:
  *                 type: string
  *                 example: "Resource not found"
+ */
+
+/**
+ * @swagger
+ * /b2bUser/{userId}/category/{categoryId}/subcategory:
+ *   put:
+ *     summary: Update all subcategories for a particular user and category
+ *     description: Update the price of all subcategories within a specified category for a specified user.
+ *     tags: [B2B Subcategories]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the user
+ *       - in: path
+ *         name: categoryId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the category
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - subCategories
+ *             properties:
+ *               subCategories:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   required:
+ *                     - subCategoryId
+ *                     - price
+ *                   properties:
+ *                     subCategoryId:
+ *                       type: string
+ *                       description: ID of the subcategory
+ *                     price:
+ *                       type: number
+ *                       description: New price for the subcategory
+ *             example:
+ *               subCategories: [
+ *                 { subCategoryId: "63b8e5b934e3e3f7d4a1c6f5", price: 100 },
+ *                 { subCategoryId: "63b8e5b934e3e3f7d4a1c6f6", price: 150 }
+ *               ]
+ *     responses:
+ *       "200":
+ *         description: All subcategories updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: "success"
+ *                 message:
+ *                   type: string
+ *                   example: "All subcategories updated successfully"
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       price:
+ *                         type: number
+ *                       unit:
+ *                         type: string
+ *                       status:
+ *                         type: string
+ *                       updatedAt:
+ *                         type: string
+ *                         format: date-time
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ *       "500":
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * components:
+ *   responses:
+ *     NotFound:
+ *       description: Not Found
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "User not found"
+ *     ServerError:
+ *       description: Server error
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "An error occurred while updating subcategories"
  */
 
 /**

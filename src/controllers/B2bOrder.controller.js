@@ -508,7 +508,7 @@ const verifyOtpAndCompleteOrder = async (req, res) => {
   try {
     const { orderId, otp } = req.body;
 
-    // Validate request body
+   
     if (!orderId || !otp) {
       return res.status(400).json({ message: 'Order ID and OTP are required.' });
     }
@@ -533,8 +533,8 @@ const verifyOtpAndCompleteOrder = async (req, res) => {
     const newNotification = new Notification({
       notification: notificationMessage,
       orderId: order._id,
-      orderBy:order.orderBy,
-      orderTo:order.orderTo,
+      orderBy: order.orderBy,
+      orderTo: order.orderTo,
       orderNo: order.orderNo,
       orderStatus : order.orderStatus,
       totalPrice: order.totalPrice

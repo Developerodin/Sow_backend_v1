@@ -1026,6 +1026,126 @@ export default router;
 
 /**
  * @swagger
+ * /b2bOrder/markcomplete:
+ *   post:
+ *     summary: Verify OTP and complete order
+ *     description: Verify the OTP and update the order status to 'Completed'.
+ *     tags: [B2bOrders]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - orderId
+ *               - otp
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *                 description: ID of the order
+ *               otp:
+ *                 type: number
+ *                 description: OTP for the order
+ *             example:
+ *               orderId: "63b8e5b934e3e3f7d4a1c6f5"
+ *               otp: 123456
+ *     responses:
+ *       "200":
+ *         description: Order status updated to Completed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Order status updated to Completed successfully."
+ *                 order:
+ *                   type: object
+ *                   properties:
+ *                     _id:
+ *                       type: string
+ *                     orderNo:
+ *                       type: string
+ *                     category:
+ *                       type: string
+ *                     orderBy:
+ *                       type: string
+ *                     orderTo:
+ *                       type: string
+ *                     location:
+ *                       type: string
+ *                     subCategory:
+ *                       type: string
+ *                     weight:
+ *                       type: string
+ *                     unit:
+ *                       type: string
+ *                     notes:
+ *                       type: string
+ *                     value:
+ *                       type: number
+ *                     totalPrice:
+ *                       type: number
+ *                     photos:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                     orderStatus:
+ *                       type: string
+ *                     createdAt:
+ *                       type: string
+ *                       format: date-time
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ *       "404":
+ *         $ref: '#/components/responses/NotFound'
+ *       "500":
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * components:
+ *   responses:
+ *     InvalidInput:
+ *       description: Invalid input
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Order ID and OTP are required."
+ *     NotFound:
+ *       description: Not Found
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Order not found."
+ *     ServerError:
+ *       description: Server error
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 example: "Server error. Please try again later."
+ */
+
+/**
+ * @swagger
  * /b2bOrder/updateOrderStatus:
  *   post:
  *     summary: Update order status
