@@ -39,6 +39,7 @@ import {
   uploadWarehouseImage,
   changeKYCStatus,
   updateAllSubCategories,
+  updateKycDetailsByUserId,
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
@@ -108,6 +109,7 @@ b2bRoute.post('/address/citystate', getUniqueCitiesAndStates);
 
 // Fetch B2B KYC details by user ID
 b2bRoute.get('/kyc/:userId', getB2BKycDetailsByUserId);
+b2bRoute.put('/kyc/:userId', updateKycDetailsByUserId);
 
 // Category routes
 b2bRoute.post('/:userId/category', createCategory);

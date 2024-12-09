@@ -894,6 +894,22 @@ const addB2BKycDetails = async (req, res) => {
   }
 };
 
+const updateKycDetailsByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const updatedKyc = await B2BKYC.findOneAndUpdate(
+      { userId },
+      req.body,
+      { new: true, upsert: true } // upsert option will create a new document if one doesn't exist
+    );
+
+    res.status(200).json({ success: true, message: 'KYC details updated successfully', data: updatedKyc });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
  const getB2BKycDetailsByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -970,4 +986,5 @@ export {
   uploadWarehouseImage,
   changeKYCStatus,
   updateAllSubCategories,
+  updateKycDetailsByUserId,
 };
