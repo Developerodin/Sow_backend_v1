@@ -22,10 +22,7 @@ const subCategorySchema = new mongoose.Schema({
     enum: ['active', 'inactive'],
     default: 'active',
   },
-  isTradable: {
-    type: Boolean,
-    default: true, // Default value set to false
-  },
+  
   updatedAt: {
     type: Date,
     default: Date.now,

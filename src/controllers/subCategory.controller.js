@@ -134,6 +134,20 @@ const getSubCategoriesByCategoryName = async (req, res) => {
   }
 };
 
+const markAllSubCategoriesTradable = async (req, res) => {
+  try {
+    // Update all subcategories to set isTradable to true
+    const result = await SubCategory.updateMany({}, { isTradable: true });
+
+    res.status(200).json({
+      message: 'All subcategories marked as tradable successfully.',
+      updatedCount: result.nModified,
+    });
+  } catch (error) {
+    console.error('Error updating subcategories:', error);
+    res.status(500).json({ message: 'An error occurred while updating subcategories.', error });
+  }
+};
 
 
 export {
@@ -144,4 +158,5 @@ export {
   deleteSubCategory,
   getSubCategoriesByCategoryId,
   getSubCategoriesByCategoryName,
+  markAllSubCategoriesTradable
 };

@@ -7,6 +7,7 @@ import {
   updateSubCategory, 
   deleteSubCategory ,
   getSubCategoriesByCategoryName,
+  markAllSubCategoriesTradable
 } from "../../controllers/subCategory.controller.js"; // Adjust the path as needed
 
 const router = express.Router();
@@ -76,7 +77,7 @@ router.post("/", createSubCategory);
  *         description: Server error
  */
 router.get("/", getAllSubCategories);
-
+router.get("/marktrue", markAllSubCategoriesTradable);
 /**
  * @swagger
  * /subcategories/{id}:

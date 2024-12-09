@@ -57,7 +57,7 @@ const orderSchema = mongoose.Schema(
         orderStatus : {
             type : String,
             required : true,
-            enum : ['New','Pending', 'Rejected', 'Completed'],
+            enum : ['New','Pending', 'Rejected', 'Completed','Cancelled'],
             default : 'New',
         },
         otp: {

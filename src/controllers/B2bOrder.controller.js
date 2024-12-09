@@ -572,20 +572,28 @@ const getUserSaleSummary = async (req, res) => {
     let netAmountEarned = 0;
     let netScrapSold = 0;
     let netScrapPending = 0;
+    let netScrapPurchased = 0;
 
     // Calculate based on the order status
     userOrders.forEach((order) => {
       if (order.orderTo.toString() === userId) {
-        // Earnings for orders received
+        // Purchases made by the user
+        netScrapPurchased += parseFloat(order.weight || 0);
+
+        // Earnings for orders received (if applicable)
         netAmountEarned += order.totalPrice;
       }
-      if (order.orderStatus === "Completed" && order.orderBy.toString() === userId) {
+
+      if (order.orderBy.toString() === userId) {
         // Scrap sold by the user
-        netScrapSold += parseFloat(order.weight || 0);
-      }
-      if (order.orderStatus === "Pending" && order.orderBy.toString() === userId) {
+        if (order.orderStatus === "Completed") {
+          netScrapSold += parseFloat(order.weight || 0);
+        }
+
         // Scrap pending by the user
-        netScrapPending += parseFloat(order.weight || 0);
+        if (order.orderStatus === "Pending") {
+          netScrapPending += parseFloat(order.weight || 0);
+        }
       }
     });
 
@@ -596,6 +604,7 @@ const getUserSaleSummary = async (req, res) => {
         netAmountEarned,
         netScrapSold,
         netScrapPending,
+        netScrapPurchased,
       },
     });
   } catch (error) {
