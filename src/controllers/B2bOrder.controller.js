@@ -90,8 +90,8 @@ const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
       
-      .populate("orderBy", "name registerAs")
-      .populate("orderTo", "name registerAs")
+      .populate("orderBy", "name registerAs phoneNumber")
+      .populate("orderTo", "name registerAs phoneNumber")
       .populate("location", "googleAddress")
       
 
@@ -336,8 +336,8 @@ const getUserOrdersById = async (req, res) => {
 
     // Find all orders where orderBy matches the userId
     const orders = await Order.find({ orderBy: userId })
-      .populate('orderBy', 'name email') // Populate orderBy with selected fields
-      .populate('orderTo', 'name email') // Populate orderTo with selected fields
+      .populate('orderBy', 'name email phoneNumber') // Populate orderBy with selected fields
+      .populate('orderTo', 'name email phoneNumber') // Populate orderTo with selected fields
       .populate('location', 'address city state') // Populate location with selected fields
       .exec(); // Populate subCategory with selected fields
 
