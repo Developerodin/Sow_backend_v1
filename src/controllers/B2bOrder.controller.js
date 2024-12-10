@@ -471,7 +471,7 @@ const updateOrderStatus = async (req, res) => {
     if (!updatedOrder) {
       return res.status(404).json({ message: 'Order not found.' });
     }
-    const notificationMessage = `order status updated: ${updatedOrder.orderNo}`;
+    const notificationMessage = `Order status updated: ${updatedOrder.orderNo}`;
 
     const newNotification = new Notification({
       notification: notificationMessage,
