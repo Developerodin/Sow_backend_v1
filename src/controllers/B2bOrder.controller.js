@@ -360,7 +360,7 @@ const filterOrdersByUserId = async (req, res) => {
     const statusFilter =
       type === 'upcoming'
       ? { orderStatus: 'Pending' }
-        : { orderStatus: { $in: ['Rejected', 'Completed'] } };
+        : { orderStatus: { $in: ['Rejected', 'Completed', 'Cancelled'] } };
 
     const userFilter =
       action === 'sell'
@@ -456,7 +456,7 @@ const updateOrderStatus = async (req, res) => {
     const { orderId,status } = req.body; // Extract new status from request body
 
     // Validate the status value against allowed statuses
-    const allowedStatuses = ['New', 'Pending', 'Rejected', 'Completed'];
+    const allowedStatuses = ['New', 'Pending', 'Rejected', 'Completed', 'Cancelled'];
     if (!allowedStatuses.includes(status)) {
       return res.status(400).json({ message: 'Invalid order status.' });
     }
