@@ -81,6 +81,48 @@ import Notification from "../models/b2bNotification.js";
     }
   };
 
+  export const markNotificationsAsRead = async (req, res) => {
+    try {
+      const { userId } = req.params;
+  
+      // Update notifications where the user is the sender (orderBy)
+      await Notification.updateMany(
+        { orderBy: userId, isReadByOrderBy: false },
+        { $set: { isReadByOrderBy: true } }
+      );
+  
+      // Update notifications where the user is the recipient (orderTo)
+      await Notification.updateMany(
+        { orderTo: userId, isReadByOrderTo: false },
+        { $set: { isReadByOrderTo: true } }
+      );
+  
+      res.status(200).json({ message: 'Notifications marked as read successfully.' });
+    } catch (error) {
+      console.error('Error marking notifications as read:', error);
+      res.status(500).json({ message: 'Server error.' });
+    }
+  };
+
+  export const getUnreadNotificationsCount = async (req, res) => {
+    try {
+      const { userId } = req.params;
+  
+      // Count unread notifications for the user
+      const unreadCount = await Notification.countDocuments({
+        $or: [
+          { orderBy: userId, isReadByOrderBy: false }, // Unread for orderBy
+          { orderTo: userId, isReadByOrderTo: false }, // Unread for orderTo
+        ],
+      });
+  
+      res.status(200).json({ unreadCount });
+    } catch (error) {
+      console.error('Error fetching unread notifications count:', error);
+      res.status(500).json({ message: 'Server error.' });
+    }
+  };
+
   export const getNotifications = async (req, res) => {
     try {
       const notifications = await Notification.find()
