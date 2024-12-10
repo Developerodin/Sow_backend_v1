@@ -360,7 +360,7 @@ const filterOrdersByUserId = async (req, res) => {
     const statusFilter =
       type === 'upcoming'
       ? { orderStatus: 'Pending' }
-        : { orderStatus: { $in: ['Rejected', 'Completed'] } };
+        : { orderStatus: { $in: ['Rejected', 'Completed', 'Cancelled'] } };
 
     const userFilter =
       action === 'sell'
