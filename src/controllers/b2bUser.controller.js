@@ -897,6 +897,7 @@ const addB2BKycDetails = async (req, res) => {
 const updateKycDetailsByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
+    console.log(`Updating KYC details for userId: ${userId}`);
 
     const updatedKyc = await B2BKYC.findOneAndUpdate(
       { userId },
@@ -904,11 +905,18 @@ const updateKycDetailsByUserId = async (req, res) => {
       { new: true, upsert: true } // upsert option will create a new document if one doesn't exist
     );
 
+    if (!updatedKyc) {
+      return res.status(404).json({ success: false, message: 'KYC details not found for this user' });
+    }
+
     res.status(200).json({ success: true, message: 'KYC details updated successfully', data: updatedKyc });
   } catch (error) {
+    console.error('Error updating KYC details:', error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
+
+
 
  const getB2BKycDetailsByUserId = async (req, res) => {
   try {
