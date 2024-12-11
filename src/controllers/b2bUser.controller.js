@@ -949,6 +949,55 @@ const changeKYCStatus = async (req, res) => {
   }
 };
 
+ const getWholesalerData = async (req, res) => {
+  try {
+    // Fetch all wholesalers and populate their categories and subcategories
+    const wholesalers = await B2BUser.find({ registerAs: 'Wholesaler' })
+      .select('name category')
+      .populate({
+        path: 'category.sub_category',
+        select: 'name price unit status',
+      });
+
+    if (!wholesalers.length) {
+      return res.status(404).json({ message: 'No wholesalers found.' });
+    }
+
+    // Extract unique categories, subcategories, and states
+    const uniqueCategories = new Set();
+    const uniqueSubCategories = new Set();
+    const uniqueStates = new Set();
+
+    wholesalers.forEach((wholesaler) => {
+      wholesaler.category.forEach((category) => {
+        uniqueCategories.add(category.name);
+        category.sub_category.forEach((subCategory) => {
+          uniqueSubCategories.add(subCategory.name);
+        });
+      });
+
+      // Assuming each wholesaler has an `address` or `state` field to identify their state
+      if (wholesaler.address && wholesaler.address.state) {
+        uniqueStates.add(wholesaler.address.state);
+      }
+    });
+
+    // Prepare response data
+    const response = {
+      userData: wholesalers,
+      uniqueCategories: Array.from(uniqueCategories),
+      uniqueSubCategories: Array.from(uniqueSubCategories),
+      uniqueStates: Array.from(uniqueStates),
+    };
+
+    res.status(200).json(response);
+  } catch (error) {
+    console.error('Error fetching wholesalers:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+
 export {
   createB2BUser,
   getB2BUsers,
@@ -987,4 +1036,5 @@ export {
   changeKYCStatus,
   updateAllSubCategories,
   updateKycDetailsByUserId,
+  getWholesalerData
 };

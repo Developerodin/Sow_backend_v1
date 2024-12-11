@@ -40,6 +40,7 @@ import {
   changeKYCStatus,
   updateAllSubCategories,
   updateKycDetailsByUserId,
+  getWholesalerData
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
@@ -66,6 +67,8 @@ b2bRoute.post('/', validate(b2bUserValidation.createB2BUser), createB2BUser);
 
 // Fetch all B2B users
 b2bRoute.get('/',  getB2BUsers);
+
+b2bRoute.get('/wholesalers', getWholesalerData);
 
 // Fetch a B2B user by ID
 b2bRoute.get('/:userId', getB2BUser);
