@@ -997,6 +997,84 @@ const changeKYCStatus = async (req, res) => {
   }
 };
 
+const getSubcategoryHistoryByTimeframe = async (req, res) => {
+  try {
+    const { wholesalerId, categoryId, subCategoryName, timeframe } = req.params;
+    let startDate, endDate;
+
+    // Calculate date range based on the timeframe
+    switch (timeframe) {
+      case 'today':
+        startDate = new Date();
+        startDate.setHours(0, 0, 0, 0); // Start of today
+        endDate = new Date();
+        endDate.setHours(23, 59, 59, 999); // End of today
+        break;
+      case 'week':
+        startDate = new Date();
+        startDate.setDate(startDate.getDate() - 6); // Last 7 days
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'month':
+        startDate = new Date();
+        startDate.setMonth(startDate.getMonth() - 1); // Last month
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'year':
+        startDate = new Date();
+        startDate.setFullYear(startDate.getFullYear() - 1); // Last year
+        startDate.setHours(0, 0, 0, 0);
+        break;
+      case 'all':
+        startDate = null; // No date restriction
+        break;
+      default:
+        return res.status(400).json({ message: 'Invalid timeframe' });
+    }
+
+    // Fetch the wholesaler by ID
+    const wholesaler = await B2BUser.findById(wholesalerId).populate('category.sub_category');
+
+    if (!wholesaler) {
+      return res.status(404).json({ message: 'Wholesaler not found' });
+    }
+
+    // Find the specific category
+    const category = wholesaler.category.find((cat) => cat._id.toString() === categoryId);
+
+    if (!category) {
+      return res.status(404).json({ message: 'Category not found' });
+    }
+
+    // Find the specific subcategory
+    const subCategory = category.sub_category.find((sub) => sub.name === subCategoryName);
+
+    if (!subCategory) {
+      return res.status(404).json({ message: 'Subcategory not found' });
+    }
+
+    // Filter history based on the timeframe
+    let filteredHistory = subCategory.history;
+
+    if (startDate) {
+      filteredHistory = filteredHistory.filter((entry) => {
+        const updatedAt = new Date(entry.updatedAt);
+        return updatedAt >= startDate && (!endDate || updatedAt <= endDate);
+      });
+    }
+
+    // Sort history by the most recent date
+    filteredHistory.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+    res.status(200).json({ history: filteredHistory });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+
+
+
 
 export {
   createB2BUser,
@@ -1036,5 +1114,6 @@ export {
   changeKYCStatus,
   updateAllSubCategories,
   updateKycDetailsByUserId,
-  getWholesalerData
+  getWholesalerData,
+  getSubcategoryHistoryByTimeframe,
 };

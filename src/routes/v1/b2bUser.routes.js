@@ -40,7 +40,8 @@ import {
   changeKYCStatus,
   updateAllSubCategories,
   updateKycDetailsByUserId,
-  getWholesalerData
+  getWholesalerData,
+  getSubcategoryHistoryByTimeframe,
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
@@ -69,6 +70,7 @@ b2bRoute.post('/', validate(b2bUserValidation.createB2BUser), createB2BUser);
 b2bRoute.get('/',  getB2BUsers);
 
 b2bRoute.get('/wholesalers', getWholesalerData);
+b2bRoute.get('/wholesalers/:wholesalerId/category/:categoryId/subcategory/:subCategoryName/history/:timeframe', getSubcategoryHistoryByTimeframe);
 
 // Fetch a B2B user by ID
 b2bRoute.get('/:userId', getB2BUser);
