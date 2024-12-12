@@ -42,6 +42,10 @@ import {
   updateKycDetailsByUserId,
   getWholesalerData,
   getSubcategoryHistoryByTimeframe,
+  getOwnerImage,
+  updateOwnerImage,
+  getWarehouseImage,
+  updateWarehouseImage,
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
@@ -100,6 +104,10 @@ b2bRoute.post('/kyc-status', changeKYCStatus);
 
 b2bRoute.post('/kycOwnerImage', uploadOwnerImage);
 b2bRoute.post('/kycWareHouseImage', uploadWarehouseImage);
+b2bRoute.get('/kycOwnerImage/:id', getOwnerImage);
+b2bRoute.put('/kycOwnerImage/:id', updateOwnerImage);
+b2bRoute.get('/kycWareHouseImage/:id', getWarehouseImage);
+b2bRoute.put('/kycWareHouseImage/:id', updateWarehouseImage);
 // Delete a B2B KYC details
 b2bRoute.delete('/kyc/:id', deleteB2BKycDetails);
 
