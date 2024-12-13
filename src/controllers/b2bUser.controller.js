@@ -1026,7 +1026,7 @@ const changeKYCStatus = async (req, res) => {
   try {
     // Fetch all wholesalers and populate their categories and subcategories
     const wholesalers = await B2BUser.find({ registerAs: 'Wholesaler' })
-      .select('name category')
+      .select('name category businessName')
       .populate({
         path: 'category.sub_category',
         select: 'name price unit status',
