@@ -73,11 +73,11 @@ const createOrder = async (req, res) => {
 const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
-      .populate("category", "name")
-      .populate("orderBy", "name registerAs")
-      .populate("orderTo", "name registerAs")
+      // .populate("category", "name")
+      .populate("orderBy", "name registerAs phoneNumber")
+      .populate("orderTo", "name registerAs phoneNumber")
       .populate("location", "googleAddress")
-      .populate("subCategory", "name");
+      // .populate("subCategory", "name");
 
     res.status(200).json(orders);
   } catch (error) {
