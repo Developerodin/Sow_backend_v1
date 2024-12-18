@@ -1234,4 +1234,7 @@ export {
   updateOwnerImage,
   getWarehouseImage,
   updateWarehouseImage,
+  getB2BUserActiveAddress,
+  setB2BAddressActive
+
 };
