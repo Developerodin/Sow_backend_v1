@@ -284,21 +284,25 @@ const getUserDetailsWithCategoryAndSubCategory = async (req, res) => {
       });
     }
 
-    // Fetch user address
-    const userAddresses = await B2BAddress.find({ userId });
+    // Fetch user addresses (if applicable)
+    const userAddresses = await B2BAddress.find({ userId, activeAddress:true });
 
     // Filter category and subcategory data
     const filteredCategory = user.category
       .filter((category) => category._id.toString() === categoryId)
-      .map((category) => ({
-        ...category,
-        sub_category: category.sub_category.filter(
+      .map((category) => {
+        const subCategory = category.sub_category.find(
           (sub) => sub._id.toString() === subCategoryId
-        ),
-      }))
-      .find((category) => category.sub_category.length > 0); // Ensure at least one matching subcategory
+        );
 
-    if (!filteredCategory) {
+        // Return the category with the filtered subcategory
+        return subCategory
+          ? { ...category.toObject(), sub_category: [subCategory] }
+          : null;
+      })
+      .filter((category) => category !== null); // Remove null values if no subcategory matches
+
+    if (filteredCategory.length === 0) {
       return res.status(404).json({
         success: false,
         message: 'Category or subcategory not found for the user',
@@ -310,12 +314,12 @@ const getUserDetailsWithCategoryAndSubCategory = async (req, res) => {
       userDetails: {
         name: user.name,
         email: user.email,
-        phone: user.phone,
+        phoneNumber: user.phoneNumber,
         registerAs: user.registerAs,
         businessName: user.businessName,
       },
       addresses: userAddresses,
-      category: filteredCategory,
+      category: filteredCategory[0], // Since it's filtered by categoryId and subCategoryId
     };
 
     res.status(200).json({
