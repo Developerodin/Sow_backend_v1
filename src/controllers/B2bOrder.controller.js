@@ -73,11 +73,11 @@ const createOrder = async (req, res) => {
 const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find()
-      .populate("category", "name")
-      .populate("orderBy", "name registerAs")
-      .populate("orderTo", "name registerAs")
+      // .populate("category", "name")
+      .populate("orderBy", "name registerAs phoneNumber")
+      .populate("orderTo", "name registerAs phoneNumber")
       .populate("location", "googleAddress")
-      .populate("subCategory", "name");
+      // .populate("subCategory", "name");
 
     res.status(200).json(orders);
   } catch (error) {
@@ -192,7 +192,7 @@ const getFilteredUsersByRole = async (req, res) => {
     const roleFlow = {
       Retailer: 'Wholesaler',
       Wholesaler: userHasCategory ? 'Mediator' : 'Wholesaler',
-      Mediator:'Factory',
+      Mediator: 'Factory',
       Factory: userHasCategory ? 'Factory' : 'Wholesaler',
     };
 
@@ -236,7 +236,10 @@ const getFilteredUsersByRole = async (req, res) => {
 
     // Apply city filter if provided
     if (city) {
+      console.log(`City provided: ${city}. Filtering addresses by city.`);
       addresses = addresses.filter((address) => address.city === city);
+    } else {
+      console.log('No city provided. Skipping city filter.');
     }
 
     // Prepare the response combining user and address data
@@ -248,7 +251,7 @@ const getFilteredUsersByRole = async (req, res) => {
     res.status(200).json({
       success: true,
       data: response,
-      role:targetRole
+      role: targetRole,
     });
   } catch (error) {
     console.error('Error fetching filtered users with addresses:', error);

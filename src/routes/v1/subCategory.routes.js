@@ -7,7 +7,8 @@ import {
   updateSubCategory, 
   deleteSubCategory ,
   getSubCategoriesByCategoryName,
-  markAllSubCategoriesTradable
+  markAllSubCategoriesTradable,
+  updatePriceForAllSubCategories
 } from "../../controllers/subCategory.controller.js"; // Adjust the path as needed
 
 const router = express.Router();
@@ -56,6 +57,7 @@ const router = express.Router();
  *         description: Server error
  */
 router.post("/", createSubCategory);
+router.put("/updatePrice", updatePriceForAllSubCategories);
 
 /**
  * @swagger

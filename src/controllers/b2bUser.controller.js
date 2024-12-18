@@ -868,7 +868,7 @@ const uploadOwnerImage = async (req, res) => {
 const uploadWarehouseImage = async (req, res) => {
   try {
    
-    const { kycId,warehouseImage } = req.body; // Assuming the image URL/path is sent in the request body
+    const { kycId,warehouseImage } = req.body; 
 
     const kyc = await B2BKYC.findById(kycId);
     if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
@@ -881,6 +881,71 @@ const uploadWarehouseImage = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
+// Get Owner Image
+const getOwnerImage = async (req, res) => {
+  try {
+    const { kycId } = req.params;
+
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+
+    res.status(200).json({ ownerImage: kyc.OwnerImage });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Update Owner Image
+const updateOwnerImage = async (req, res) => {
+  try {
+    const { kycId } = req.params;
+    const { ownerImage } = req.body;
+
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+
+    kyc.OwnerImage = ownerImage;
+    await kyc.save();
+
+    res.status(200).json({ message: 'Owner image updated successfully', kyc });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get Warehouse Image
+const getWarehouseImage = async (req, res) => {
+  try {
+    const { kycId } = req.params;
+
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+
+    res.status(200).json({ warehouseImage: kyc.WareHouseImage });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Update Warehouse Image
+const updateWarehouseImage = async (req, res) => {
+  try {
+    const { kycId } = req.params;
+    const { warehouseImage } = req.body;
+
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+
+    kyc.WareHouseImage = warehouseImage;
+    await kyc.save();
+
+    res.status(200).json({ message: 'Warehouse image updated successfully', kyc });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 
 const addB2BKycDetails = async (req, res) => {
   try {
@@ -938,6 +1003,7 @@ const addB2BKycDetails = async (req, res) => {
 const updateKycDetailsByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
+    console.log(`Updating KYC details for userId: ${userId}`);
 
     const updatedKyc = await B2BKYC.findOneAndUpdate(
       { userId },
@@ -945,11 +1011,18 @@ const updateKycDetailsByUserId = async (req, res) => {
       { new: true, upsert: true } // upsert option will create a new document if one doesn't exist
     );
 
+    if (!updatedKyc) {
+      return res.status(404).json({ success: false, message: 'KYC details not found for this user' });
+    }
+
     res.status(200).json({ success: true, message: 'KYC details updated successfully', data: updatedKyc });
   } catch (error) {
+    console.error('Error updating KYC details:', error);
     res.status(400).json({ success: false, message: error.message });
   }
 };
+
+
 
  const getB2BKycDetailsByUserId = async (req, res) => {
   try {
@@ -994,7 +1067,7 @@ const changeKYCStatus = async (req, res) => {
   try {
     // Fetch all wholesalers and populate their categories and subcategories
     const wholesalers = await B2BUser.find({ registerAs: 'Wholesaler' })
-      .select('name category')
+      .select('name category businessName')
       .populate({
         path: 'category.sub_category',
         select: 'name price unit status',
@@ -1157,6 +1230,8 @@ export {
   updateKycDetailsByUserId,
   getWholesalerData,
   getSubcategoryHistoryByTimeframe,
-  setB2BAddressActive,
-  getB2BUserActiveAddress
+  getOwnerImage,
+  updateOwnerImage,
+  getWarehouseImage,
+  updateWarehouseImage,
 };

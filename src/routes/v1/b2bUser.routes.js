@@ -42,6 +42,10 @@ import {
   updateKycDetailsByUserId,
   getWholesalerData,
   getSubcategoryHistoryByTimeframe,
+  getOwnerImage,
+  updateOwnerImage,
+  getWarehouseImage,
+  updateWarehouseImage,
   getB2BUserActiveAddress,
   setB2BAddressActive
 } from '../../controllers/b2bUser.controller.js';
@@ -105,6 +109,10 @@ b2bRoute.post('/kyc-status', changeKYCStatus);
 
 b2bRoute.post('/kycOwnerImage', uploadOwnerImage);
 b2bRoute.post('/kycWareHouseImage', uploadWarehouseImage);
+b2bRoute.get('/kycOwnerImage/:id', getOwnerImage);
+b2bRoute.put('/kycOwnerImage/:id', updateOwnerImage);
+b2bRoute.get('/kycWareHouseImage/:id', getWarehouseImage);
+b2bRoute.put('/kycWareHouseImage/:id', updateWarehouseImage);
 // Delete a B2B KYC details
 b2bRoute.delete('/kyc/:id', deleteB2BKycDetails);
 
@@ -996,6 +1004,74 @@ export default b2bRoute;
  *         description: Unauthorized access
  *       "404":
  *         description: KYC details not found
+ */
+
+/**
+ * @swagger
+ * /b2bUser/kyc/{userId}:
+ *   put:
+ *     summary: Update KYC details by user ID
+ *     description: Update the KYC details for a specified user. If the KYC details do not exist, they will be created.
+ *     tags: [B2B KYC]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID of the user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               gstinNumber:
+ *                 type: string
+ *                 description: GSTIN number
+ *             example:
+ *               gstinNumber: "Abhsg123567887hu"
+ *     responses:
+ *       "200":
+ *         description: KYC details updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: "KYC details updated successfully"
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     gstinNumber:
+ *                       type: string
+ *       "400":
+ *         $ref: '#/components/responses/InvalidInput'
+ */
+
+/**
+ * @swagger
+ * components:
+ *   responses:
+ *     InvalidInput:
+ *       description: Invalid input
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               success:
+ *                 type: boolean
+ *                 example: false
+ *               message:
+ *                 type: string
+ *                 example: "Invalid input"
  */
 
 

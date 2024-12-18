@@ -16,6 +16,10 @@ const SubCategorySchema = new mongoose.Schema(
       type: String,
       required: false,
     },
+    price: {
+      type: Number,
+      required: false,
+    },
     isTradable: {
       type: Boolean,
       default: true, // Default value set to false

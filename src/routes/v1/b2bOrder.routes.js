@@ -198,8 +198,6 @@ export default router;
  *     summary: Get all B2B orders
  *     description: Retrieve all orders. Only admins can access this endpoint.
  *     tags: [B2bOrders]
- *     security:
- *       - bearerAuth: []
  *     responses:
  *       "200":
  *         description: List of all orders

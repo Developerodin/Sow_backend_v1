@@ -1,6 +1,6 @@
 import SubCategory from "../models/subCategory.modal.js"; 
 import Category from "../models/category.modal.js";
-import mongoose from "mongoose";
+
 
 // Create a new subcategory
 const createSubCategory = async (req, res) => {
@@ -149,6 +149,21 @@ const markAllSubCategoriesTradable = async (req, res) => {
   }
 };
 
+const updatePriceForAllSubCategories = async (req, res) => {
+  try {
+    // Update the price field for all subcategories to 100
+    const result = await SubCategory.updateMany({}, { price: 100 });
+
+    res.status(200).json({
+      message: "Price updated to 100 for all subcategories successfully.",
+      modifiedCount: result.nModified, // Number of documents modified
+    });
+  } catch (error) {
+    console.error("Error updating prices:", error);
+    res.status(500).json({ message: "An error occurred while updating prices.", error });
+  }
+};
+
 
 export {
   createSubCategory,
@@ -158,5 +173,6 @@ export {
   deleteSubCategory,
   getSubCategoriesByCategoryId,
   getSubCategoriesByCategoryName,
-  markAllSubCategoriesTradable
+  markAllSubCategoriesTradable,
+  updatePriceForAllSubCategories,
 };
