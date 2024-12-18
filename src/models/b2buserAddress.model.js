@@ -45,6 +45,10 @@ const addressSchema = mongoose.Schema(
       type: String,
       trim: true,
     },
+    activeAddress: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

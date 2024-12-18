@@ -223,6 +223,8 @@ const addB2BAddress = async (req, res) => {
 };
 
 
+
+
 const getB2BAllAddressesByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
@@ -242,6 +244,45 @@ const getB2BAllAddressesByUserId = async (req, res) => {
     res.status(400).json({ success: false, message: error.message });
   }
 };
+
+const getB2BUserActiveAddress = async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const activeAddress = await B2BAddress.findOne({ userId, activeAddress: true });
+    if (!activeAddress) {
+      return res.status(404).json({ message: 'No active address found for this user' });
+    }
+    res.status(200).json(activeAddress);
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+};
+
+const setB2BAddressActive = async (req, res) => {
+  const { userId, addressId } = req.params;
+
+  try {
+    // Deactivate all addresses for the user
+    await B2BAddress.updateMany({ userId }, { $set: { activeAddress: false } });
+
+    // Set the specified address as active
+    const updatedAddress = await B2BAddress.findByIdAndUpdate(
+      addressId,
+      { activeAddress: true },
+      { new: true }
+    );
+
+    if (!updatedAddress) {
+      return res.status(404).json({ message: 'Address not found' });
+    }
+
+    res.status(200).json({ message: 'Address set as active', address: updatedAddress });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+};
+
 
 const getUniqueCitiesAndStates = async (req, res) => {
   try {
@@ -1116,4 +1157,6 @@ export {
   updateKycDetailsByUserId,
   getWholesalerData,
   getSubcategoryHistoryByTimeframe,
+  setB2BAddressActive,
+  getB2BUserActiveAddress
 };

@@ -42,6 +42,8 @@ import {
   updateKycDetailsByUserId,
   getWholesalerData,
   getSubcategoryHistoryByTimeframe,
+  getB2BUserActiveAddress,
+  setB2BAddressActive
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
@@ -93,7 +95,10 @@ b2bRoute.delete(
 
 // Update a B2B address
 b2bRoute.put('/address/:addressId',  updateB2BAddress);
+b2bRoute.get('/:userId/active', getB2BUserActiveAddress);
 
+// Set an address as active
+b2bRoute.put('/:userId/:addressId/active', setB2BAddressActive);
 // Add a B2B KYC details
 b2bRoute.post('/kyc', addB2BKycDetails);
 b2bRoute.post('/kyc-status', changeKYCStatus);
