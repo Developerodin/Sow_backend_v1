@@ -1,40 +1,34 @@
 import b2cOrder from "../models/b2cOrder.model.js";
 
-// Create a new order
 const createB2cOrder = async (req, res) => {
   try {
     const {
-      orderNo,
-      category,
+      items, // Array of items
       orderBy,
       orderTo,
       location,
-      subCategory,
-      weight,
-      unit,
-      notes,
       value,
-      totalPrice,
       photos,
       orderStatus,
     } = req.body;
 
-    // Ensure orderNo is unique
-    const existingOrder = await b2cOrder.findOne({ orderNo });
-    if (existingOrder) {
-      return res.status(400).json({ message: "Order number already exists" });
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "Items array is required and must not be empty" });
     }
 
+    // Calculate totalPrice for the entire order by summing up item total prices
+    const totalPrice = items.reduce((sum, item) => sum + item.totalPrice, 0);
+
+    // Generate a unique order number
+    // const timestamp = Date.now();
+    // const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    // const orderNo = `ORD-${timestamp}-${randomSuffix}`;
+
     const newB2cOrder = new b2cOrder({
-      orderNo,
-      category,
+      items,
       orderBy,
       orderTo,
       location,
-      subCategory,
-      weight,
-      unit,
-      notes,
       value,
       totalPrice,
       photos,
@@ -52,11 +46,11 @@ const createB2cOrder = async (req, res) => {
 const getB2cAllOrders = async (req, res) => {
   try {
     const orders = await b2cOrder.find()
-      .populate("category", "name")
+      .populate("items.category", "name")
+      .populate("items.subCategory", "name")
       .populate("orderBy", "firstName lastName profileType")
       .populate("orderTo", "name registerAs")
-      .populate("location", "googleAddress")
-      .populate("subCategory", "name");
+      .populate("location", "googleAddress");
 
     res.status(200).json(orders);
   } catch (error) {
@@ -68,11 +62,11 @@ const getB2cAllOrders = async (req, res) => {
 const getB2cOrderById = async (req, res) => {
   try {
     const b2cOrder = await b2cOrder.findById(req.params.id)
-      .populate("category", "name")
+      .populate("items.category", "name")
+      .populate("items.subCategory", "name")
       .populate("orderBy", "firstName lastName profileType")
       .populate("orderTo", "name registerAs")
-      .populate("location", "googleAddress")
-      .populate("subCategory", "name");
+      .populate("location", "googleAddress");
 
     if (!b2cOrder) {
       return res.status(404).json({ message: "Order not found" });
@@ -127,11 +121,11 @@ const getB2cOrdersByUserId = async (req, res) => {
     const b2cOrders = await b2cOrder.find({
       $or: [{ orderBy: userId }, { orderTo: userId }],
     })
-      .populate("category", "name")
-      .populate("subCategory", "name")
-      .populate("location", "googleAddress")
+      .populate("items.category", "name")
+      .populate("items.subCategory", "name")
       .populate("orderBy", "firstName lastName profileType")
       .populate("orderTo", "name registerAs")
+      .populate("location", "googleAddress");
 
     if (b2cOrders.length === 0) {
       return res.status(404).json({ message: "No orders found for this user" });
@@ -145,9 +139,9 @@ const getB2cOrdersByUserId = async (req, res) => {
 
 export {
   createB2cOrder,
-    getB2cAllOrders,
-    getB2cOrderById,
-    updateB2cOrder,
-    deleteB2cOrder,
-    getB2cOrdersByUserId,
+  getB2cAllOrders,
+  getB2cOrderById,
+  updateB2cOrder,
+  deleteB2cOrder,
+  getB2cOrdersByUserId,
 };
