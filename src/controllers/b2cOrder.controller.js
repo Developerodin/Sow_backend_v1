@@ -7,7 +7,6 @@ const createB2cOrder = async (req, res) => {
       orderBy,
       orderTo,
       location,
-      value,
       photos,
       orderStatus,
     } = req.body;
@@ -29,7 +28,6 @@ const createB2cOrder = async (req, res) => {
       orderBy,
       orderTo,
       location,
-      value,
       totalPrice,
       photos,
       orderStatus,
