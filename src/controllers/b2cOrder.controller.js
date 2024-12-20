@@ -3,7 +3,7 @@ import b2cOrder from "../models/b2cOrder.model.js";
 const createB2cOrder = async (req, res) => {
   try {
     const {
-      items, // Array of items
+      items,
       orderBy,
       orderTo,
       location,
