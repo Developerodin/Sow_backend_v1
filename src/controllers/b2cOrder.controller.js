@@ -2,12 +2,13 @@ import b2cOrder from "../models/b2cOrder.model.js";
 
 const createB2cOrder = async (req, res) => {
   try {
+    console.log("Request body:", req.body);
+
     const {
-      items, // Array of items
+      items,
       orderBy,
       orderTo,
       location,
-      value,
       photos,
       orderStatus,
     } = req.body;
@@ -29,7 +30,6 @@ const createB2cOrder = async (req, res) => {
       orderBy,
       orderTo,
       location,
-      value,
       totalPrice,
       photos,
       orderStatus,
@@ -38,10 +38,11 @@ const createB2cOrder = async (req, res) => {
     await newB2cOrder.save();
     res.status(201).json(newB2cOrder);
   } catch (error) {
+    console.error("Error creating B2C order:", error.message);
+    console.error(error.stack);
     res.status(500).json({ message: error.message });
   }
 };
-
 // Get all orders
 const getB2cAllOrders = async (req, res) => {
   try {
