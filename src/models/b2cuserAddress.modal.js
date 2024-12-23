@@ -37,6 +37,10 @@ const addressSchema = mongoose.Schema(
       enum: ['Warehouse', 'Other'],
       required: true,
     },
+    activeAddress: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     timestamps: true,

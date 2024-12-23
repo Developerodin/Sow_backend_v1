@@ -238,6 +238,44 @@ const addB2CAddress = async (req, res) => {
       res.status(400).json({ success: false, message: error.message });
     }
   };
+
+  const getB2CUserActiveAddress = async (req, res) => {
+    const { userId } = req.params;
+  
+    try {
+      const activeAddress = await B2CAddress.findOne({ userId, activeAddress: true });
+      if (!activeAddress) {
+        return res.status(404).json({ message: 'No active address found for this user' });
+      }
+      res.status(200).json(activeAddress);
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error });
+    }
+  };
+  
+  const setB2CAddressActive = async (req, res) => {
+    const { userId, addressId } = req.params;
+  
+    try {
+      // Deactivate all addresses for the user
+      await B2CAddress.updateMany({ userId }, { $set: { activeAddress: false } });
+  
+      // Set the specified address as active
+      const updatedAddress = await B2BAddress.findByIdAndUpdate(
+        addressId,
+        { activeAddress: true },
+        { new: true }
+      );
+  
+      if (!updatedAddress) {
+        return res.status(404).json({ message: 'Address not found' });
+      }
+  
+      res.status(200).json({ message: 'Address set as active', address: updatedAddress });
+    } catch (error) {
+      res.status(500).json({ message: 'Server error', error });
+    }
+  };
   
   
   // KYC
@@ -309,4 +347,4 @@ const addB2CAddress = async (req, res) => {
     }
   };
 
-export { createUser, getUsers, getUser, updateUser, deleteUser, addB2CAddress, deleteB2CAddress, updateB2CAddress, getB2CAllAddressesByUserId, addB2CKycDetails, deleteB2CKycDetails, updateB2CKycDetails, getB2CKycDetailsByUserId, generateOTPController, loginWithOTPController };
+export { createUser, getUsers, getUser, updateUser, deleteUser, addB2CAddress, deleteB2CAddress, updateB2CAddress, getB2CAllAddressesByUserId, addB2CKycDetails, deleteB2CKycDetails, updateB2CKycDetails, getB2CKycDetailsByUserId, generateOTPController, loginWithOTPController, getB2CUserActiveAddress, setB2CAddressActive };

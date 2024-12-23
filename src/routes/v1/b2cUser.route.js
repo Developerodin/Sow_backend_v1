@@ -27,6 +27,11 @@ router.delete(
 
 // Update a B2B address
 router.put('/address/:addressId', b2cUserController.updateB2CAddress);
+router.get('/:userId/active', b2cUserController.getB2CUserActiveAddress);
+
+// Set an address as active
+router.put('/:userId/:addressId/active', b2cUserController.setB2CAddressActive);
+
 
 // Add a B2B KYC details
 router.post('/kyc', b2cUserController.addB2CKycDetails);
