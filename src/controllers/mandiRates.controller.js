@@ -17,11 +17,11 @@ const saveCategoryPrices = async (req, res) => {
 // Update a price of a single category
 const updateCategoryPrice = async (req, res) => {
   try {
-    const { mandiId, category } = req.params;
+    const { mandiId, category,subCategory } = req.params;
     const { newPrice } = req.body;
 
     const mandiCategoryPrice = await MandiCategoryPrice.findOne({ mandi: mandiId });
-    const categoryPrice = mandiCategoryPrice.categoryPrices.find(cp => cp.category === category);
+    const categoryPrice = mandiCategoryPrice.categoryPrices.find(cp => cp.category === category && cp.subCategory === subCategory);
 
     if (categoryPrice) {
       categoryPrice.price = newPrice;
@@ -37,7 +37,7 @@ const updateCategoryPrice = async (req, res) => {
 
 const deleteCategoryPrice = async (req, res) => {
   try {
-    const { mandiId, category } = req.params;
+    const { mandiId, category , subCategory } = req.params;
 
     // Find the MandiCategoryPrice document by mandiId
     const mandiCategoryPrice = await MandiCategoryPrice.findOne({ mandi: mandiId });
@@ -49,7 +49,7 @@ const deleteCategoryPrice = async (req, res) => {
 
     // Find the index of the category to be deleted in the categoryPrices array
     const categoryIndex = mandiCategoryPrice.categoryPrices.findIndex(
-      (cp) => cp.category === category
+      (cp) => cp.category === category && cp.subCategory === subCategory
     );
 
     // If the category is not found, return a 404 error
@@ -89,7 +89,7 @@ const getAllData = async (req, res) => {
 // Get price difference and percentage change
 const getPriceDifference = async (req, res) => {
   try {
-    const { mandiId, category } = req.params;
+    const { mandiId, category,subCategory } = req.params;
 
     // Find all MandiCategoryPrice documents for the specified mandiId
     const mandiCategoryPrices = await MandiCategoryPrice.find({ mandi: mandiId });
@@ -104,7 +104,7 @@ const getPriceDifference = async (req, res) => {
 
     // Filter for the specified category and sort by createdAt in descending order
     const categoryPrices = allCategoryPrices
-      .filter(cp => cp.category === category)
+      .filter(cp => cp.category === category && cp.subCategory === subCategory)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by timestamp, latest first
 
     // Check if there are enough prices to compare
