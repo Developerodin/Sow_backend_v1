@@ -10,11 +10,11 @@ const CategoryPriceSchema = new Schema({
   },
   subCategory:{
     type: String,
-    required: true,
+    required: false,
   },
   price: {
     type: Number,
-    required: true,
+    required: false,
     default: 0,
   },
   priceDifference:{
