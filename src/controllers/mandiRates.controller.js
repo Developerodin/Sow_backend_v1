@@ -73,6 +73,62 @@ const deleteCategoryPrice = async (req, res) => {
 };
 
 
+const saveOrUpdateMandiCategoryPrices = async (req, res) => {
+  try {
+    const { mandiPrices } = req.body; // Array of objects containing mandiId, category, subCategory, price, and priceDifference
+
+    if (!mandiPrices || !Array.isArray(mandiPrices)) {
+      return res.status(400).json({ message: 'Invalid input. Please provide an array of mandi prices.' });
+    }
+
+    const bulkOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference }) => {
+      return {
+        updateOne: {
+          filter: { mandi: mandiId, 'categoryPrices.category': category },
+          update: {
+            $set: {
+              'categoryPrices.$.subCategory': subCategory || null,
+              'categoryPrices.$.price': price || 0,
+              'categoryPrices.$.priceDifference': priceDifference || null,
+            },
+          },
+          upsert: false,
+        },
+      };
+    });
+
+    const upsertOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference }) => {
+      return {
+        updateOne: {
+          filter: { mandi: mandiId },
+          update: {
+            $addToSet: {
+              categoryPrices: {
+                category,
+                subCategory: subCategory || null,
+                price: price || 0,
+                priceDifference: priceDifference || null,
+              },
+            },
+          },
+          upsert: true,
+        },
+      };
+    });
+
+    // Perform bulk write for both update and upsert operations
+    const bulkWriteOperations = [...bulkOperations, ...upsertOperations];
+
+    await MandiCategoryPrice.bulkWrite(bulkWriteOperations);
+
+    res.status(200).json({ message: 'Mandi prices updated successfully.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'An error occurred while saving mandi prices.', error: error.message });
+  }
+};
+
+
 
 
 
@@ -248,4 +304,4 @@ const getMandiByCategory = async (req, res) => {
   }
 };
 
-export { saveCategoryPrices, updateCategoryPrice, deleteCategoryPrice, getAllData, getPriceDifference, getMandiHistory, getCategoryHistory, getHistoryByTimeframe, getMandiByCategory };
+export {saveOrUpdateMandiCategoryPrices, saveCategoryPrices, updateCategoryPrice, deleteCategoryPrice, getAllData, getPriceDifference, getMandiHistory, getCategoryHistory, getHistoryByTimeframe, getMandiByCategory };
