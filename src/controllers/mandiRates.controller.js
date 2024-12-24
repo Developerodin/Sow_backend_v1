@@ -136,7 +136,31 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
 const getAllData = async (req, res) => {
   try {
     const data = await MandiCategoryPrice.find().populate('mandi');
-    res.status(200).json(data);
+
+    // Add priceDifference field for each categoryPrices entry using getPriceDifference2
+    const updatedData = await Promise.all(data.map(async (mandiCategoryPrice) => {
+      const updatedCategoryPrices = await Promise.all(mandiCategoryPrice.categoryPrices.map(async (categoryPrice) => {
+        const { category, subCategory } = categoryPrice;
+        
+        // Call getPriceDifference2 to calculate the price difference
+        
+        const priceDifferenceData = await getPriceDifference2(mandiCategoryPrice.mandi._id, category, subCategory) || {};
+        
+        // Replace the priceDifference field with the result from getPriceDifference2
+        return {
+          ...categoryPrice.toObject(), // Convert to plain object
+          priceDifference: priceDifferenceData, // Update with new price difference
+        };
+      }));
+
+      // Return updated MandiCategoryPrice object
+      return {
+        ...mandiCategoryPrice.toObject(),
+        categoryPrices: updatedCategoryPrices,
+      };
+    }));
+    // console.log("DAta ===>",updatedData)
+    res.status(200).json(updatedData);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -181,6 +205,56 @@ const getPriceDifference = async (req, res) => {
 
     // Return the result as JSON
     res.status(200).json({
+      category,
+      currentPrice,
+      previousPrice,
+      difference,
+      percentChange,
+      tag,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getPriceDifference2 = async (mandiId, category,subCategory) => {
+  try {
+   
+
+    // Find all MandiCategoryPrice documents for the specified mandiId
+    const mandiCategoryPrices = await MandiCategoryPrice.find({ mandi: mandiId });
+
+    // Check if any mandiCategoryPrices were found
+    if (!mandiCategoryPrices || mandiCategoryPrices.length === 0) {
+      return {}
+    }
+
+    // Flatten the categoryPrices array from all documents
+    const allCategoryPrices = mandiCategoryPrices.flatMap(mandi => mandi.categoryPrices);
+
+    // Filter for the specified category and sort by createdAt in descending order
+    const categoryPrices = allCategoryPrices
+      .filter(cp => cp.category === category && cp.subCategory === subCategory)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by timestamp, latest first
+
+    // Check if there are enough prices to compare
+    if (categoryPrices.length < 2) {
+      return {};
+    }
+
+    // Extract the current and previous prices
+    // console.log("Array data  ==>",categoryPrices[categoryPrices.length -1],categoryPrices[categoryPrices.length -2])
+    const currentPrice = categoryPrices[categoryPrices.length - 1].price;
+    const previousPrice = categoryPrices[categoryPrices.length -2].price;
+    //  console.log("cureent price ==>",currentPrice )
+    //  console.log("previous Price ==>",previousPrice )
+    // Calculate the difference and percent change
+    const difference = currentPrice - previousPrice;
+    const percentChange = ((difference / previousPrice) * 100).toFixed(2);
+    const tag = difference > 0 ? 'Increment' : 'Decrement';
+
+    // Return the result as JSON
+    return({
       category,
       currentPrice,
       previousPrice,
