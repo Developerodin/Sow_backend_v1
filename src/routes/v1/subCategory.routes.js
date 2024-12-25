@@ -8,7 +8,9 @@ import {
   deleteSubCategory ,
   getSubCategoriesByCategoryName,
   markAllSubCategoriesTradable,
-  updatePriceForAllSubCategories
+  updatePriceForAllSubCategories,
+  uploadSubCategoryImage,
+  updateAllSubCategoryImages
 } from "../../controllers/subCategory.controller.js"; // Adjust the path as needed
 
 const router = express.Router();
@@ -58,7 +60,8 @@ const router = express.Router();
  */
 router.post("/", createSubCategory);
 router.put("/updatePrice", updatePriceForAllSubCategories);
-
+router.post('/upload-image', uploadSubCategoryImage);
+router.post('/upload-allimage', updateAllSubCategoryImages);
 /**
  * @swagger
  * /subcategories:

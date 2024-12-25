@@ -9,7 +9,8 @@ router.get('/', categoryController.getCategories);
 router.get('/:id', categoryController.getCategoryById);
 router.patch('/:id', categoryController.updateCategoryById);
 router.delete('/:id', categoryController.deleteCategoryById);
-
+router.put('/update-image', categoryController.updateCategoryImage);
+router.post('/update-allimage', categoryController.updateAllCategoryImages);
 export default router;
 
 
