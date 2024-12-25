@@ -1,4 +1,6 @@
+import B2CNotification from "../models/b2cNotification.js";
 import b2cOrder from "../models/b2cOrder.model.js";
+import { sendNotificationByUserId } from "./pushNotifications.controller.js";
 
 const createB2cOrder = async (req, res) => {
   try {
@@ -36,6 +38,27 @@ const createB2cOrder = async (req, res) => {
     });
 
     await newB2cOrder.save();
+    const notificationMessage = `A new order has been created: ${newOrder.orderNo}`;
+
+    const newNotification = new B2CNotification({
+      notification: notificationMessage,
+      orderId: newOrder._id,
+      orderBy,
+      orderTo,
+      orderNo: newOrder.orderNo,
+      orderStatus : newOrder.orderStatus,
+      totalPrice: newOrder.totalPrice
+    });
+
+    await newNotification.save();
+
+    const title = 'New Order';
+    const body = `Total Amount: ${totalPrice}`;
+    const data = { orderId: newOrder._id, otp };
+
+    // Send notification to the user who created the order
+    // await sendNotificationByUserId(orderBy, title, body, data);
+    // await sendNotificationByUserId(orderTo, title, body, data);
     res.status(201).json(newB2cOrder);
   } catch (error) {
     console.error("Error creating B2C order:", error.message);
@@ -91,6 +114,27 @@ const updateB2cOrder = async (req, res) => {
     if (!updatedB2cOrder) {
       return res.status(404).json({ message: "Order not found" });
     }
+    const notificationMessage = `Order status updated: ${updatedOrder.orderNo}`;
+
+    const newNotification = new B2CNotification({
+      notification: notificationMessage,
+      orderId: updatedB2cOrder._id,
+      orderBy:updatedB2cOrder.orderBy,
+      orderTo:updatedB2cOrder.orderTo,
+      orderNo: updatedB2cOrder.orderNo,
+      orderStatus : updatedB2cOrder.orderStatus,
+      totalPrice: updatedB2cOrder.totalPrice
+    });
+
+    await newNotification.save();
+
+    const title = 'Order updated';
+    const body = `Total Amount: ${updatedB2cOrder.totalPrice}`;
+    const data = { orderId: updatedB2cOrder._id };
+
+    // Send notification to the user who created the order
+    // await sendNotificationByUserId(updatedB2cOrder.orderBy, title, body, data);
+    // await sendNotificationByUserId(updatedB2cOrder.orderTo, title, body, data);
 
     res.status(200).json(updatedB2cOrder);
   } catch (error) {
