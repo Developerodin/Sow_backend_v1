@@ -9,12 +9,14 @@ import {
   getCategoryHistory,
   getHistoryByTimeframe,
   getMandiByCategory,
+  saveOrUpdateMandiCategoryPrices
 } from '../../controllers/mandiRates.controller.js';
 
 const router = express.Router();
 
 // Routes
 router.post('/', saveCategoryPrices);
+router.post('/mandi-prices', saveOrUpdateMandiCategoryPrices);
 router.patch('/:mandiId/:category', updateCategoryPrice);
 router.delete('/:mandiId/:category', deleteCategoryPrice);
 router.get('/', getAllData);

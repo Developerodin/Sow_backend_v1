@@ -17,11 +17,11 @@ const saveCategoryPrices = async (req, res) => {
 // Update a price of a single category
 const updateCategoryPrice = async (req, res) => {
   try {
-    const { mandiId, category } = req.params;
+    const { mandiId, category,subCategory } = req.params;
     const { newPrice } = req.body;
 
     const mandiCategoryPrice = await MandiCategoryPrice.findOne({ mandi: mandiId });
-    const categoryPrice = mandiCategoryPrice.categoryPrices.find(cp => cp.category === category);
+    const categoryPrice = mandiCategoryPrice.categoryPrices.find(cp => cp.category === category && cp.subCategory === subCategory);
 
     if (categoryPrice) {
       categoryPrice.price = newPrice;
@@ -37,7 +37,7 @@ const updateCategoryPrice = async (req, res) => {
 
 const deleteCategoryPrice = async (req, res) => {
   try {
-    const { mandiId, category } = req.params;
+    const { mandiId, category , subCategory } = req.params;
 
     // Find the MandiCategoryPrice document by mandiId
     const mandiCategoryPrice = await MandiCategoryPrice.findOne({ mandi: mandiId });
@@ -49,7 +49,7 @@ const deleteCategoryPrice = async (req, res) => {
 
     // Find the index of the category to be deleted in the categoryPrices array
     const categoryIndex = mandiCategoryPrice.categoryPrices.findIndex(
-      (cp) => cp.category === category
+      (cp) => cp.category === category && cp.subCategory === subCategory
     );
 
     // If the category is not found, return a 404 error
@@ -73,6 +73,62 @@ const deleteCategoryPrice = async (req, res) => {
 };
 
 
+const saveOrUpdateMandiCategoryPrices = async (req, res) => {
+  try {
+    const { mandiPrices } = req.body; // Array of objects containing mandiId, category, subCategory, price, and priceDifference
+
+    if (!mandiPrices || !Array.isArray(mandiPrices)) {
+      return res.status(400).json({ message: 'Invalid input. Please provide an array of mandi prices.' });
+    }
+
+    const bulkOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference }) => {
+      return {
+        updateOne: {
+          filter: { mandi: mandiId, 'categoryPrices.category': category },
+          update: {
+            $set: {
+              'categoryPrices.$.subCategory': subCategory || null,
+              'categoryPrices.$.price': price || 0,
+              'categoryPrices.$.priceDifference': priceDifference || null,
+            },
+          },
+          upsert: false,
+        },
+      };
+    });
+
+    const upsertOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference }) => {
+      return {
+        updateOne: {
+          filter: { mandi: mandiId },
+          update: {
+            $addToSet: {
+              categoryPrices: {
+                category,
+                subCategory: subCategory || null,
+                price: price || 0,
+                priceDifference: priceDifference || null,
+              },
+            },
+          },
+          upsert: true,
+        },
+      };
+    });
+
+    // Perform bulk write for both update and upsert operations
+    const bulkWriteOperations = [...bulkOperations, ...upsertOperations];
+
+    await MandiCategoryPrice.bulkWrite(bulkWriteOperations);
+
+    res.status(200).json({ message: 'Mandi prices updated successfully.' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'An error occurred while saving mandi prices.', error: error.message });
+  }
+};
+
+
 
 
 
@@ -80,7 +136,31 @@ const deleteCategoryPrice = async (req, res) => {
 const getAllData = async (req, res) => {
   try {
     const data = await MandiCategoryPrice.find().populate('mandi');
-    res.status(200).json(data);
+
+    // Add priceDifference field for each categoryPrices entry using getPriceDifference2
+    const updatedData = await Promise.all(data.map(async (mandiCategoryPrice) => {
+      const updatedCategoryPrices = await Promise.all(mandiCategoryPrice.categoryPrices.map(async (categoryPrice) => {
+        const { category, subCategory } = categoryPrice;
+        
+        // Call getPriceDifference2 to calculate the price difference
+        
+        const priceDifferenceData = await getPriceDifference2(mandiCategoryPrice.mandi._id, category, subCategory) || {};
+        
+        // Replace the priceDifference field with the result from getPriceDifference2
+        return {
+          ...categoryPrice.toObject(), // Convert to plain object
+          priceDifference: priceDifferenceData, // Update with new price difference
+        };
+      }));
+
+      // Return updated MandiCategoryPrice object
+      return {
+        ...mandiCategoryPrice.toObject(),
+        categoryPrices: updatedCategoryPrices,
+      };
+    }));
+    // console.log("DAta ===>",updatedData)
+    res.status(200).json(updatedData);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -89,7 +169,7 @@ const getAllData = async (req, res) => {
 // Get price difference and percentage change
 const getPriceDifference = async (req, res) => {
   try {
-    const { mandiId, category } = req.params;
+    const { mandiId, category,subCategory } = req.params;
 
     // Find all MandiCategoryPrice documents for the specified mandiId
     const mandiCategoryPrices = await MandiCategoryPrice.find({ mandi: mandiId });
@@ -104,7 +184,7 @@ const getPriceDifference = async (req, res) => {
 
     // Filter for the specified category and sort by createdAt in descending order
     const categoryPrices = allCategoryPrices
-      .filter(cp => cp.category === category)
+      .filter(cp => cp.category === category && cp.subCategory === subCategory)
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by timestamp, latest first
 
     // Check if there are enough prices to compare
@@ -125,6 +205,56 @@ const getPriceDifference = async (req, res) => {
 
     // Return the result as JSON
     res.status(200).json({
+      category,
+      currentPrice,
+      previousPrice,
+      difference,
+      percentChange,
+      tag,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+const getPriceDifference2 = async (mandiId, category,subCategory) => {
+  try {
+   
+
+    // Find all MandiCategoryPrice documents for the specified mandiId
+    const mandiCategoryPrices = await MandiCategoryPrice.find({ mandi: mandiId });
+
+    // Check if any mandiCategoryPrices were found
+    if (!mandiCategoryPrices || mandiCategoryPrices.length === 0) {
+      return {}
+    }
+
+    // Flatten the categoryPrices array from all documents
+    const allCategoryPrices = mandiCategoryPrices.flatMap(mandi => mandi.categoryPrices);
+
+    // Filter for the specified category and sort by createdAt in descending order
+    const categoryPrices = allCategoryPrices
+      .filter(cp => cp.category === category && cp.subCategory === subCategory)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by timestamp, latest first
+
+    // Check if there are enough prices to compare
+    if (categoryPrices.length < 2) {
+      return {};
+    }
+
+    // Extract the current and previous prices
+    // console.log("Array data  ==>",categoryPrices[categoryPrices.length -1],categoryPrices[categoryPrices.length -2])
+    const currentPrice = categoryPrices[categoryPrices.length - 1].price;
+    const previousPrice = categoryPrices[categoryPrices.length -2].price;
+    //  console.log("cureent price ==>",currentPrice )
+    //  console.log("previous Price ==>",previousPrice )
+    // Calculate the difference and percent change
+    const difference = currentPrice - previousPrice;
+    const percentChange = ((difference / previousPrice) * 100).toFixed(2);
+    const tag = difference > 0 ? 'Increment' : 'Decrement';
+
+    // Return the result as JSON
+    return({
       category,
       currentPrice,
       previousPrice,
@@ -248,4 +378,4 @@ const getMandiByCategory = async (req, res) => {
   }
 };
 
-export { saveCategoryPrices, updateCategoryPrice, deleteCategoryPrice, getAllData, getPriceDifference, getMandiHistory, getCategoryHistory, getHistoryByTimeframe, getMandiByCategory };
+export {saveOrUpdateMandiCategoryPrices, saveCategoryPrices, updateCategoryPrice, deleteCategoryPrice, getAllData, getPriceDifference, getMandiHistory, getCategoryHistory, getHistoryByTimeframe, getMandiByCategory };

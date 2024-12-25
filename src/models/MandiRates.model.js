@@ -8,10 +8,19 @@ const CategoryPriceSchema = new Schema({
     type: String,
     required: true,
   },
+  subCategory:{
+    type: String,
+    required: false,
+  },
   price: {
     type: Number,
-    required: true,
+    required: false,
+    default: 0,
   },
+  priceDifference:{
+    type: Number,
+    required: false,
+  }
 });
 
 // Define the MandiCategoryPrice schema
