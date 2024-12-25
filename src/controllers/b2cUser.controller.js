@@ -261,7 +261,7 @@ const addB2CAddress = async (req, res) => {
       await B2CAddress.updateMany({ userId }, { $set: { activeAddress: false } });
   
       // Set the specified address as active
-      const updatedAddress = await B2BAddress.findByIdAndUpdate(
+      const updatedAddress = await B2CAddress.findByIdAndUpdate(
         addressId,
         { activeAddress: true },
         { new: true }
