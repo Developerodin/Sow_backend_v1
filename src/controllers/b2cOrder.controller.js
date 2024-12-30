@@ -178,6 +178,64 @@ const getB2cOrdersByUserId = async (req, res) => {
   }
 };
 
+
+const assignOrderToUser = async (req, res) => {
+  try {
+    console.log("Assigning order to user - Request body:", req.body);
+
+    const { orderId, userId } = req.body;
+
+    if (!orderId || !userId) {
+      console.error("Order ID or User ID is missing");
+      return res.status(400).json({ message: "Order ID and User ID are required" });
+    }
+
+    console.log(`Finding order with ID: ${orderId}`);
+    const updatedOrder = await b2cOrder.findByIdAndUpdate(
+      orderId,
+      { orderTo: userId },
+      { new: true }
+    );
+
+    if (!updatedOrder) {
+      console.error(`Order with ID: ${orderId} not found`);
+      return res.status(404).json({ message: "Order not found" });
+    }
+
+    console.log(`Order with ID: ${orderId} found and updated with user ID: ${userId}`);
+
+    const notificationMessage = `Order assigned to user: ${updatedOrder.orderNo}`;
+    console.log("Creating notification with message:", notificationMessage);
+
+    const newNotification = new B2CNotification({
+      notification: notificationMessage,
+      orderId: updatedOrder._id,
+      orderBy: updatedOrder.orderBy,
+      orderTo: updatedOrder.orderTo,
+      orderNo: updatedOrder.orderNo,
+      orderStatus: updatedOrder.orderStatus,
+      totalPrice: updatedOrder.totalPrice,
+    });
+
+    await newNotification.save();
+    console.log("Notification saved successfully");
+
+    const title = 'Order Assigned';
+    const body = `Order No: ${updatedOrder.orderNo}`;
+    const data = { orderId: updatedOrder._id };
+
+    console.log("Sending notification to user with ID:", userId);
+    await sendNotificationByUserId(userId, title, body, data);
+
+    console.log("Order assigned successfully");
+    res.status(200).json(updatedOrder);
+  } catch (error) {
+    console.error("Error assigning order to user:", error.message);
+    console.error(error.stack);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 export {
   createB2cOrder,
   getB2cAllOrders,
@@ -185,4 +243,5 @@ export {
   updateB2cOrder,
   deleteB2cOrder,
   getB2cOrdersByUserId,
+  assignOrderToUser,
 };
