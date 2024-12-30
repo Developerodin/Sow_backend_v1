@@ -4,7 +4,9 @@ import {  createB2cOrder,
     getB2cOrderById,
     updateB2cOrder,
     deleteB2cOrder,
-    getB2cOrdersByUserId,assignOrderToUser} from "../../controllers/b2cOrder.controller.js";
+    getB2cOrdersByUserId,assignOrderToUser,filterOrdersByUserId,
+    getNewOrdersForUser,
+    updateOrderStatus,} from "../../controllers/b2cOrder.controller.js";
 
 
 const router = express.Router();
@@ -27,6 +29,10 @@ router.delete("/:id", deleteB2cOrder);
 // Get orders by user ID
 router.get("/user/:userId", getB2cOrdersByUserId);
 router.post("/assignOrderToUser", assignOrderToUser);
+
+router.post("/filterorders", filterOrdersByUserId);
+router.post("/updateOrderStatus", updateOrderStatus);
+router.post("/getNewOrdersForUser", getNewOrdersForUser);
 
 
 export default router;

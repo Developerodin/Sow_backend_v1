@@ -236,6 +236,158 @@ const assignOrderToUser = async (req, res) => {
   }
 };
 
+const filterOrdersByUserId = async (req, res) => {
+  try {
+    const { userId, type, action } = req.body; // Extract userId, type, and action from the request body
+
+    // Define query filters
+    const statusFilter =
+      type === 'upcoming'
+        ? { orderStatus: 'Pending' }
+        : { orderStatus: { $in: ['Rejected', 'Completed', 'Cancelled'] } };
+
+    const userFilter =
+      action === 'sell'
+        ? { orderBy: userId }
+        : action === 'purchase'
+        ? { orderTo: userId }
+        : {};
+
+    // Combine filters
+    const query = { ...statusFilter, ...userFilter };
+
+    // Fetch filtered orders and populate necessary fields
+    const orders = await B2COrder.find(query)
+      .populate('orderBy', 'name email')
+      .populate('orderTo', 'name email')
+      .populate('location', 'address city state')
+      .exec();
+
+    if (!orders.length) {
+      return res.status(404).json({ message: 'No orders found for the specified criteria.' });
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error filtering orders:', error.message);
+    res.status(500).json({ message: 'An error occurred while filtering orders.' });
+  }
+};
+
+const getNewOrdersForUser = async (req, res) => {
+  try {
+    const { userId, period } = req.body; 
+
+    let startDate;
+    const now = new Date();
+
+    switch (period) {
+      case 'today':
+        startDate = moment().startOf('day').toDate();
+        break;
+      case 'last week':
+        startDate = moment().subtract(1, 'week').startOf('day').toDate();
+        break;
+      case 'last month':
+        startDate = moment().subtract(1, 'month').startOf('day').toDate();
+        break;
+      case 'last 3 months':
+        startDate = moment().subtract(3, 'months').startOf('day').toDate();
+        break;
+      case 'last 6 months':
+        startDate = moment().subtract(6, 'months').startOf('day').toDate();
+        break;
+      case 'all':
+      default:
+        startDate = null; // No date filter
+    }
+
+    // Build the query with optional date filter
+    const query = {
+      $or: [
+        { orderBy: userId },
+        { orderTo: userId },
+      ],
+      orderStatus: 'New',
+    };
+
+    if (startDate) {
+      query.createdAt = { $gte: startDate, $lte: now };
+    }
+
+    // Fetch orders based on the query
+    const orders = await B2COrder.find(query)
+      .populate('orderBy', 'name email')
+      .populate('orderTo', 'name email')
+      .populate('location', 'address city state')
+      .exec();
+
+    if (!orders.length) {
+      return res.status(404).json({ message: 'No new orders found for this user.' });
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error fetching new orders:', error.message);
+    res.status(500).json({ message: 'An error occurred while fetching new orders.' });
+  }
+};
+
+const updateOrderStatus = async (req, res) => {
+  try {
+    const { orderId, status } = req.body; // Extract new status from request body
+
+    // Validate the status value against allowed statuses
+    const allowedStatuses = ['New', 'Pending', 'Rejected', 'Completed', 'Cancelled'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Invalid order status.' });
+    }
+
+    // Find the order by ID and update the status
+    const updatedOrder = await B2COrder.findByIdAndUpdate(
+      orderId,
+      { orderStatus: status },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedOrder) {
+      return res.status(404).json({ message: 'Order not found.' });
+    }
+
+    const notificationMessage = `Order status updated: ${updatedOrder.orderNo}`;
+
+    const newNotification = new B2CNotification({
+      notification: notificationMessage,
+      orderId: updatedOrder._id,
+      orderBy: updatedOrder.orderBy,
+      orderTo: updatedOrder.orderTo,
+      orderNo: updatedOrder.orderNo,
+      orderStatus: updatedOrder.orderStatus,
+      totalPrice: updatedOrder.totalPrice,
+    });
+
+    await newNotification.save();
+
+    const title = 'Order updated';
+    const body = `Total Amount: ${updatedOrder.totalPrice}`;
+    const data = { orderId: updatedOrder._id };
+
+    // Send notification to the user who created the order
+    await sendNotificationByUserId(updatedOrder.orderBy, title, body, data);
+    await sendNotificationByUserId(updatedOrder.orderTo, title, body, data);
+
+    res.status(200).json({
+      status: "updated",
+      message: 'Order status updated successfully.',
+    });
+  } catch (error) {
+    console.error('Error updating order status:', error.message);
+    res.status(500).json({ message: 'An error occurred while updating order status.' });
+  }
+};
+
+
+
 export {
   createB2cOrder,
   getB2cAllOrders,
@@ -244,4 +396,7 @@ export {
   deleteB2cOrder,
   getB2cOrdersByUserId,
   assignOrderToUser,
+  filterOrdersByUserId,
+  getNewOrdersForUser,
+  updateOrderStatus,
 };
