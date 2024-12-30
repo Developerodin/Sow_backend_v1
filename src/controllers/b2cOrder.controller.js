@@ -47,8 +47,6 @@ const createB2cOrder = async (req, res) => {
 const getB2cAllOrders = async (req, res) => {
   try {
     const orders = await b2cOrder.find()
-      .populate("items.category", "name")
-      .populate("items.subCategory", "name")
       .populate("orderBy", "firstName lastName profileType")
       .populate("orderTo", "name registerAs")
       .populate("location", "googleAddress");
@@ -63,8 +61,7 @@ const getB2cAllOrders = async (req, res) => {
 const getB2cOrderById = async (req, res) => {
   try {
     const b2cOrder = await b2cOrder.findById(req.params.id)
-      .populate("items.category", "name")
-      .populate("items.subCategory", "name")
+
       .populate("orderBy", "firstName lastName profileType")
       .populate("orderTo", "name registerAs")
       .populate("location", "googleAddress");
@@ -122,8 +119,7 @@ const getB2cOrdersByUserId = async (req, res) => {
     const b2cOrders = await b2cOrder.find({
       $or: [{ orderBy: userId }, { orderTo: userId }],
     })
-      .populate("items.category", "name")
-      .populate("items.subCategory", "name")
+
       .populate("orderBy", "firstName lastName profileType")
       .populate("orderTo", "name registerAs")
       .populate("location", "googleAddress");
