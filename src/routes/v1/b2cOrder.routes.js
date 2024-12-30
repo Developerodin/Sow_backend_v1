@@ -319,6 +319,90 @@ export default router;
 
 /**
  * @swagger
+ * /b2cOrder/assignOrderToUser:
+ *   post:
+ *     summary: Assign an order to a user
+ *     tags: [B2c Orders]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               orderId:
+ *                 type: string
+ *                 description: The ID of the order to be assigned
+ *                 example: 60d21b4667d0d8992e610c85
+ *               userId:
+ *                 type: string
+ *                 description: The ID of the user to whom the order is assigned
+ *                 example: 60d21b4967d0d8992e610c86
+ *     responses:
+ *       200:
+ *         description: Order assigned successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 _id:
+ *                   type: string
+ *                   description: The ID of the order
+ *                 orderNo:
+ *                   type: string
+ *                   description: The order number
+ *                 orderBy:
+ *                   type: string
+ *                   description: The ID of the user who created the order
+ *                 orderTo:
+ *                   type: string
+ *                   description: The ID of the user to whom the order is assigned
+ *                 location:
+ *                   type: string
+ *                   description: The location ID
+ *                 items:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       category:
+ *                         type: string
+ *                       subCategory:
+ *                         type: string
+ *                       weight:
+ *                         type: string
+ *                       unit:
+ *                         type: string
+ *                       notes:
+ *                         type: string
+ *                       value:
+ *                         type: number
+ *                       totalPrice:
+ *                         type: number
+ *                 photos:
+ *                   type: string
+ *                 orderStatus:
+ *                   type: string
+ *                   enum: ["New", "Pending", "Rejected", "Completed", "Cancelled"]
+ *                 totalPrice:
+ *                   type: number
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *                 updatedAt:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         description: Order ID and User ID are required
+ *       404:
+ *         description: Order not found
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @swagger
  * components:
  *   schemas:
  *     B2cOrder:
