@@ -164,6 +164,57 @@ const updatePriceForAllSubCategories = async (req, res) => {
   }
 };
 
+const uploadSubCategoryImage = async (req, res) => {
+  try {
+    const { subcategoryId, image } = req.body;
+
+    // Validate the required fields
+    if (!subcategoryId || !image) {
+      return res.status(400).json({ message: 'Subcategory ID and image are required.' });
+    }
+
+    // Find the subcategory by ID
+    const subCategory = await SubCategory.findById(subcategoryId);
+
+    if (!subCategory) {
+      return res.status(404).json({ message: 'Subcategory not found.' });
+    }
+
+    // Update the image field
+    subCategory.image = image;
+
+    // Save the updated document
+    await subCategory.save();
+
+    return res.status(200).json({
+      message: 'Image uploaded successfully.',
+      subCategory,
+    });
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    return res.status(500).json({ message: 'Internal server error.', error: error.message });
+  }
+};
+
+const updateAllSubCategoryImages = async (req, res) => {
+  try {
+    const { base64Image } = req.body;
+
+    if (!base64Image) {
+      return res.status(400).json({ message: 'Base64 image string is required' });
+    }
+
+    // Update all category images
+    const result = await SubCategory.updateMany({}, { image: base64Image });
+
+    res.status(200).json({
+      message: `Updated images for ${result.modifiedCount} categories successfully`,
+    });
+  } catch (error) {
+    console.error('Error updating category images:', error);
+    res.status(500).json({ message: 'Failed to update category images', error: error.message });
+  }
+};
 
 export {
   createSubCategory,
@@ -175,4 +226,6 @@ export {
   getSubCategoriesByCategoryName,
   markAllSubCategoriesTradable,
   updatePriceForAllSubCategories,
+  uploadSubCategoryImage,
+  updateAllSubCategoryImages
 };

@@ -15,6 +15,7 @@ import MandiRatesRoute from './mandiRates.routes.js ';
 import MarketRatesRoute from './marketRates.routes.js';
 import DailyRatesRoute from './dailyRates.route.js';
 import NotificationRoute from './b2bNotifications.routes.js';
+import B2CNotificationRoute from './b2cNotifications.routes.js';
 import PostRoute from './post.routes.js';
 const router = express.Router();
 
@@ -74,6 +75,10 @@ const defaultRoutes = [
   {
     path : '/b2b-notifications',
     route : NotificationRoute,
+  },
+  {
+    path : '/b2c-notifications',
+    route : B2CNotificationRoute,
   },
   {
     path : '/posts',
