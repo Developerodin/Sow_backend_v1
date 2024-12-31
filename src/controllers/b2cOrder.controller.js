@@ -84,17 +84,17 @@ const getB2cAllOrders = async (req, res) => {
 // Get order by ID
 const getB2cOrderById = async (req, res) => {
   try {
-    const b2cOrder = await b2cOrder.findById(req.params.id)
+    const orders = await b2cOrder.findById(req.params.id)
 
       .populate("orderBy", "firstName lastName profileType")
       .populate("orderTo", "name registerAs")
       .populate("location", "googleAddress");
 
-    if (!b2cOrder) {
+    if (!orders) {
       return res.status(404).json({ message: "Order not found" });
     }
 
-    res.status(200).json(b2cOrder);
+    res.status(200).json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
