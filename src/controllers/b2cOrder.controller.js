@@ -258,7 +258,7 @@ const filterOrdersByUserId = async (req, res) => {
     const query = { ...statusFilter, ...userFilter };
 
     // Fetch filtered orders and populate necessary fields
-    const orders = await B2COrder.find(query)
+    const orders = await b2cOrder.find(query)
       .populate('orderBy', 'name email')
       .populate('orderTo', 'name email')
       .populate('location', 'address city state')
@@ -317,7 +317,7 @@ const getNewOrdersForUser = async (req, res) => {
     }
 
     // Fetch orders based on the query
-    const orders = await B2COrder.find(query)
+    const orders = await b2cOrder.find(query)
       .populate('orderBy', 'name email')
       .populate('orderTo', 'name email')
       .populate('location', 'address city state')
@@ -345,7 +345,7 @@ const updateOrderStatus = async (req, res) => {
     }
 
     // Find the order by ID and update the status
-    const updatedOrder = await B2COrder.findByIdAndUpdate(
+    const updatedOrder = await b2cOrder.findByIdAndUpdate(
       orderId,
       { orderStatus: status },
       { new: true } // Return the updated document
