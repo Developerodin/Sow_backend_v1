@@ -259,9 +259,9 @@ const filterOrdersByUserId = async (req, res) => {
 
     // Fetch filtered orders and populate necessary fields
     const orders = await b2cOrder.find(query)
-      .populate('orderBy', 'name email')
+      .populate('orderBy', 'firstName lastName email')
       .populate('orderTo', 'name email')
-      .populate('location', 'address city state')
+      .populate('location', 'address city state googleAddress')
       .exec();
 
     if (!orders.length) {
@@ -318,9 +318,9 @@ const getNewOrdersForUser = async (req, res) => {
 
     // Fetch orders based on the query
     const orders = await b2cOrder.find(query)
-      .populate('orderBy', 'name email')
+      .populate('orderBy', 'firstName lastName email')
       .populate('orderTo', 'name email')
-      .populate('location', 'address city state')
+      .populate('location', 'address city state googleAddress')
       .exec();
 
     if (!orders.length) {
