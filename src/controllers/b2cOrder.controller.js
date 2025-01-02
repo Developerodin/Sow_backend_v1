@@ -15,7 +15,7 @@ const createB2cOrder = async (req, res) => {
       photos,
       orderStatus,
     } = req.body;
-
+    const otp = Math.floor(1000 + Math.random() * 9000);
     if (!items || !Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: "Items array is required and must not be empty" });
     }
@@ -36,6 +36,7 @@ const createB2cOrder = async (req, res) => {
       totalPrice,
       photos,
       orderStatus,
+      otp,
     });
 
     await newB2cOrder.save();
@@ -58,8 +59,8 @@ const createB2cOrder = async (req, res) => {
     const data = { orderId: newOrder._id, otp };
 
     // Send notification to the user who created the order
-    // await sendNotificationByUserId(orderBy, title, body, data);
-    // await sendNotificationByUserId(orderTo, title, body, data);
+    await sendNotificationByUserId(orderBy, title, body, data);
+    await sendNotificationByUserId(orderTo, title, body, data);
     res.status(201).json(newB2cOrder);
   } catch (error) {
     console.error("Error creating B2C order:", error.message);
@@ -71,8 +72,8 @@ const createB2cOrder = async (req, res) => {
 const getB2cAllOrders = async (req, res) => {
   try {
     const orders = await b2cOrder.find()
-      .populate("orderBy", "firstName lastName profileType")
-      .populate("orderTo", "name registerAs")
+      .populate("orderBy", "firstName lastName profileType phoneNumber")
+      .populate("orderTo", "name registerAs phoneNumber")
       .populate("location", "googleAddress");
 
     res.status(200).json(orders);
@@ -86,8 +87,8 @@ const getB2cOrderById = async (req, res) => {
   try {
     const orders = await b2cOrder.findById(req.params.id)
 
-      .populate("orderBy", "firstName lastName profileType")
-      .populate("orderTo", "name registerAs")
+      .populate("orderBy", "firstName lastName profileType phoneNumber")
+      .populate("orderTo", "name registerAs phoneNumber")
       .populate("location", "googleAddress");
 
     if (!orders) {
@@ -165,8 +166,8 @@ const getB2cOrdersByUserId = async (req, res) => {
       $or: [{ orderBy: userId }, { orderTo: userId }],
     })
 
-      .populate("orderBy", "firstName lastName profileType")
-      .populate("orderTo", "name registerAs")
+      .populate("orderBy", "firstName lastName profileType phoneNumber")
+      .populate("orderTo", "name registerAs phoneNumber")
       .populate("location", "googleAddress");
 
     if (b2cOrders.length === 0) {
@@ -259,8 +260,8 @@ const filterOrdersByUserId = async (req, res) => {
 
     // Fetch filtered orders and populate necessary fields
     const orders = await b2cOrder.find(query)
-      .populate('orderBy', 'firstName lastName email')
-      .populate('orderTo', 'name email')
+      .populate('orderBy', 'firstName lastName email phoneNumber')
+      .populate('orderTo', 'name email phoneNumber')
       .populate('location', 'address city state googleAddress')
       .exec();
 
@@ -318,8 +319,8 @@ const getNewOrdersForUser = async (req, res) => {
 
     // Fetch orders based on the query
     const orders = await b2cOrder.find(query)
-      .populate('orderBy', 'firstName lastName email')
-      .populate('orderTo', 'name email')
+      .populate('orderBy', 'firstName lastName email phoneNumber')
+      .populate('orderTo', 'name email phoneNumber')
       .populate('location', 'address city state googleAddress')
       .exec();
 
@@ -387,6 +388,60 @@ const updateOrderStatus = async (req, res) => {
   }
 };
 
+const verifyOtpAndCompleteOrder = async (req, res) => {
+  try {
+    const { orderId, otp } = req.body;
+
+   
+    if (!orderId || !otp) {
+      return res.status(400).json({ message: 'Order ID and OTP are required.' });
+    }
+
+    // Find the order by ID
+    const order = await b2cOrder.findById(orderId);
+
+    if (!order) {
+      return res.status(404).json({ message: 'Order not found.' });
+    }
+
+    // Check if the provided OTP matches the order's OTP
+    if (order.otp !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP.' });
+    }
+
+    // Update the order status to 'Completed'
+    order.orderStatus = 'Completed';
+    await order.save();
+    const notificationMessage = `order status updated: ${order.orderNo}`;
+
+    const newNotification = new B2CNotification({
+      notification: notificationMessage,
+      orderId: order._id,
+      orderBy: order.orderBy,
+      orderTo: order.orderTo,
+      orderNo: order.orderNo,
+      orderStatus : order.orderStatus,
+      totalPrice: order.totalPrice
+    });
+
+    await newNotification.save();
+
+    const title = 'Order completed successfully';
+    const body = `Total Amount: ${order.totalPrice}`;
+    const data = { orderId: order._id };
+
+    // Send notification to the user who created the order
+    await sendNotificationByUserId(order.orderBy, title, body, data);
+    await sendNotificationByUserId(order.orderTo, title, body, data);
+    res.status(200).json({
+      message: 'Order status updated to Completed successfully.',
+      order,
+    });
+  } catch (error) {
+    console.error('Error verifying OTP and updating order status:', error);
+    res.status(500).json({ message: 'Server error. Please try again later.' });
+  }
+};
 
 
 export {
@@ -400,4 +455,5 @@ export {
   filterOrdersByUserId,
   getNewOrdersForUser,
   updateOrderStatus,
+  verifyOtpAndCompleteOrder,
 };

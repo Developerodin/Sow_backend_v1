@@ -6,7 +6,7 @@ import {  createB2cOrder,
     deleteB2cOrder,
     getB2cOrdersByUserId,assignOrderToUser,filterOrdersByUserId,
     getNewOrdersForUser,
-    updateOrderStatus,} from "../../controllers/b2cOrder.controller.js";
+    updateOrderStatus,verifyOtpAndCompleteOrder,} from "../../controllers/b2cOrder.controller.js";
 
 
 const router = express.Router();
@@ -33,6 +33,7 @@ router.post("/assignOrderToUser", assignOrderToUser);
 router.post("/filterorders", filterOrdersByUserId);
 router.post("/updateOrderStatus", updateOrderStatus);
 router.post("/getNewOrdersForUser", getNewOrdersForUser);
+router.post("/markcomplete", verifyOtpAndCompleteOrder);
 
 
 export default router;
