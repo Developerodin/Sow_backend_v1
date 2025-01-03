@@ -24,4 +24,5 @@ router.put('/:id', updatePost);
 // Delete a Post by ID
 router.delete('/:id', deletePost);
 
+
 export default router;

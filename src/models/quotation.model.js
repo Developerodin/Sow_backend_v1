@@ -13,6 +13,21 @@ const quotationSchema = mongoose.Schema(
       required: false,
       trim: true,
     },
+    postId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+      required: true,
+    },
+    b2cUserId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "B2CUser",
+      required: true,
+    },
+    wholesalerId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "B2BUser",
+      required: true,
+    },
   },
   {
     timestamps: true,

@@ -8,6 +8,11 @@ const postSchema = new mongoose.Schema(
       ref: "B2CUser", // Reference to the User model
       required: true,
     },
+    postTo: {
+      type: mongoose.Schema.Types.ObjectId, // Reference to the user who created the post
+      ref: "B2BUser", // Reference to the User model
+      required: false,
+    },
     categoryName: {
       type: String,
       required: true,
@@ -74,6 +79,12 @@ const postSchema = new mongoose.Schema(
     address: {
       type: String,
       required: false,
+    },
+    postStatus: {
+      type: String,
+      required: true,
+      enum: ["New", "Pending", "Rejected", "Completed", "Cancelled"],
+      default: "New",
     },
   },
   {

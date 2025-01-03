@@ -9,6 +9,7 @@ router.get('/', quotationController.getAllQuotations);
 router.get('/:id', quotationController.getQuotation);
 router.patch('/:id', quotationController.updateQuotation);
 router.delete('/:id', quotationController.deleteQuotation);
+router.post('/user', quotationController.getQuotationsByB2CUserId);
 
 export default router;
 
