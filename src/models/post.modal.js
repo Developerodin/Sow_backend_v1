@@ -86,6 +86,10 @@ const postSchema = new mongoose.Schema(
       enum: ["New", "Pending", "Rejected", "Completed", "Cancelled"],
       default: "New",
     },
+    otp : {
+      type : Number,
+      required : true,
+    },
   },
   {
     timestamps: true, // Adds createdAt and updatedAt fields

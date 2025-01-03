@@ -24,6 +24,7 @@ const createPost = async (req, res) => {
 
     // Log the incoming request body for debugging
     console.log('Request body:', req.body);
+    const otp = Math.floor(1000 + Math.random() * 9000);
 
     // Create a new post instance
     const post = new Post({
@@ -43,6 +44,7 @@ const createPost = async (req, res) => {
       city,
       address,
       postStatus,
+      otp,
     });
 
     // Save the post to the database
