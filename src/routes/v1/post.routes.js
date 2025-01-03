@@ -5,6 +5,7 @@ import {
   getPostById,
   updatePost,
   deletePost,
+  updatePostStatus,
 } from '../../controllers/post.controller.js';
 
 const router = express.Router();
@@ -23,6 +24,8 @@ router.put('/:id', updatePost);
 
 // Delete a Post by ID
 router.delete('/:id', deletePost);
+
+router.post('/updatePostStatus', updatePostStatus);
 
 
 export default router;

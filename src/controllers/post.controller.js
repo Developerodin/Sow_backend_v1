@@ -106,4 +106,38 @@ const deletePost = async (req, res) => {
   }
 };
 
-export { createPost, getAllPosts, getPostById, updatePost, deletePost };
+const updatePostStatus = async (req, res) => {
+  try {
+    const { postId, status, postTo } = req.body; // Extract new status and postTo from request body
+
+    // Validate the status value against allowed statuses
+    const allowedStatuses = ['New', 'Pending', 'Rejected', 'Completed', 'Cancelled'];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Invalid post status.' });
+    }
+
+    // Prepare the update object
+    const update = { postStatus: status };
+    if (status === 'Pending' && postTo) {
+      update.postTo = postTo;
+    }
+
+    // Find the post by ID and update the status
+    const updatedPost = await Post.findByIdAndUpdate(
+      postId,
+      { $set: update },
+      { new: true } // Return the updated document
+    );
+
+    if (!updatedPost) {
+      return res.status(404).json({ message: 'Post not found.' });
+    }
+
+    res.status(200).json(updatedPost);
+  } catch (error) {
+    console.error('Error updating post status:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+export { createPost, getAllPosts, getPostById, updatePost, deletePost , updatePostStatus};
