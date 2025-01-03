@@ -98,7 +98,7 @@ const getQuotationsByB2CUserId = async (req, res) => {
   try {
     const { b2cUserId } = req.body;
     const quotations = await Quotation.find({ b2cUserId })
-      .populate('postId', 'title description')
+      .populate('postId', 'title description price quantity state city address categoryName subCategoryName')
       .populate('b2cUserId', 'firstName lastName')
       .populate('wholesalerId', 'name registerAs');
 
