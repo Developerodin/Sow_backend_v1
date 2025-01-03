@@ -166,6 +166,37 @@ const filterPostsByUserId = async (req, res) => {
   }
 };
 
+const verifyOtpAndCompletePost = async (req, res) => {
+  try {
+    const { postId, otp } = req.body;
+
+    if (!postId || !otp) {
+      return res.status(400).json({ message: 'Post ID and OTP are required.' });
+    }
+
+    // Find the post by ID
+    const post = await Post.findById(postId);
+
+    if (!post) {
+      return res.status(404).json({ message: 'Post not found.' });
+    }
+
+    // Check if the provided OTP matches the post's OTP
+    if (post.otp !== otp) {
+      return res.status(400).json({ message: 'Invalid OTP.' });
+    }
+
+    // Update the post status to 'Completed'
+    post.postStatus = 'Completed';
+    await post.save();
+
+    res.status(200).json(post);
+  } catch (error) {
+    console.error('Error verifying OTP and completing post:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 
-export { createPost, getAllPosts, getPostById, updatePost, deletePost, updatePostStatus, filterPostsByUserId };
+
+export { createPost, getAllPosts, getPostById, updatePost, deletePost, updatePostStatus, filterPostsByUserId, verifyOtpAndCompletePost };
