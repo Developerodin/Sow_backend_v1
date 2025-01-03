@@ -43,9 +43,9 @@ const getQuotation = async (req, res) => {
   try {
     const { id } = req.params;
     const quotation = await Quotation.findById(id)
-      .populate('postId', 'title description')
-      .populate('b2cUserId', 'firstName lastName')
-      .populate('wholesalerId', 'name registerAs');
+    .populate('postId', 'title description price quantity state city address categoryName subCategoryName')
+    .populate('b2cUserId', 'firstName lastName')
+    .populate('wholesalerId', 'name registerAs businessName');
 
     if (!quotation) {
       return res.status(404).json({ message: "Quotation not found" });
@@ -100,7 +100,7 @@ const getQuotationsByB2CUserId = async (req, res) => {
     const quotations = await Quotation.find({ b2cUserId })
       .populate('postId', 'title description price quantity state city address categoryName subCategoryName')
       .populate('b2cUserId', 'firstName lastName')
-      .populate('wholesalerId', 'name registerAs');
+      .populate('wholesalerId', 'name registerAs businessName');
 
     if (!quotations.length) {
       return res.status(404).json({ message: "No quotations found for this user" });
