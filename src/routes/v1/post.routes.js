@@ -6,6 +6,7 @@ import {
   updatePost,
   deletePost,
   updatePostStatus,
+  filterPostsByUserId,
 } from '../../controllers/post.controller.js';
 
 const router = express.Router();
@@ -26,6 +27,6 @@ router.put('/:id', updatePost);
 router.delete('/:id', deletePost);
 
 router.post('/updatePostStatus', updatePostStatus);
-
+router.post('/filterPostsByUserId', filterPostsByUserId);
 
 export default router;

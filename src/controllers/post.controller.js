@@ -140,4 +140,32 @@ const updatePostStatus = async (req, res) => {
   }
 };
 
-export { createPost, getAllPosts, getPostById, updatePost, deletePost , updatePostStatus};
+const filterPostsByUserId = async (req, res) => {
+  try {
+    const { b2cUserId } = req.body; // Extract b2cUserId from request body
+
+    // Define the query to filter posts by user ID and specific statuses
+    const query = {
+      postBy: b2cUserId,
+      postStatus: { $in: ['Pending', 'Rejected', 'Completed'] },
+    };
+
+    // Fetch the filtered posts and populate necessary fields
+    const posts = await Post.find(query)
+      .populate('postBy', 'firstName lastName')
+      .populate('postTo', 'name registerAs');
+
+    if (!posts.length) {
+      return res.status(404).json({ message: 'No posts found for this user with the specified statuses.' });
+    }
+
+    res.status(200).json(posts);
+  } catch (error) {
+    console.error('Error filtering posts:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+
+export { createPost, getAllPosts, getPostById, updatePost, deletePost, updatePostStatus, filterPostsByUserId };
