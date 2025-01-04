@@ -240,23 +240,24 @@ const assignOrderToUser = async (req, res) => {
 
 const filterOrdersByUserId = async (req, res) => {
   try {
-    const { userId, type, action } = req.body; // Extract userId, type, and action from the request body
+    const { userId, type } = req.body; // Extract userId and type from the request body
 
-    // Define query filters
+    // Log the incoming request body for debugging
+    console.log('Request body:', req.body);
+
+    // Define query filters based on type
     const statusFilter =
-      type === 'upcoming'
+      type === 'Pending'
         ? { orderStatus: 'Pending' }
-        : { orderStatus: { $in: ['Rejected', 'Completed', 'Cancelled'] } };
-
-    const userFilter =
-      action === 'sell'
-        ? { orderBy: userId }
-        : action === 'purchase'
-        ? { orderTo: userId }
+        : type === 'Completed'
+        ? { orderStatus: 'Completed' }
         : {};
 
     // Combine filters
-    const query = { ...statusFilter, ...userFilter };
+    const query = { orderBy: userId, ...statusFilter };
+
+    // Log the constructed query for debugging
+    console.log('Constructed query:', query);
 
     // Fetch filtered orders and populate necessary fields
     const orders = await b2cOrder.find(query)
@@ -266,9 +267,11 @@ const filterOrdersByUserId = async (req, res) => {
       .exec();
 
     if (!orders.length) {
+      console.log('No orders found for the specified criteria.');
       return res.status(404).json({ message: 'No orders found for the specified criteria.' });
     }
 
+    console.log('Filtered orders:', orders);
     res.status(200).json(orders);
   } catch (error) {
     console.error('Error filtering orders:', error.message);
