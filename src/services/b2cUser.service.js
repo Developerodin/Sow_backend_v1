@@ -1,4 +1,5 @@
 import B2CUser from '../models/b2cUser.modal.js';
+import B2CKYC from '../models/b2cUserKyc.modal.js';
 
 /**
  * Create a B2C user
@@ -13,6 +14,17 @@ const createUser = async (userBody) => {
     throw new Error('Email already taken');
   }
   const user = await B2CUser.create(userBody);
+  const kycData = {
+    userId: user._id, // Link the KYC record to the new user
+    panNumber: '',
+    gstinNumber: '',
+    panImage: '',
+    gstinImage: '',
+    status: 'pending', // Default status
+    remarks: '', // Optional field, leave empty
+  };
+
+  await B2CKYC.create(kycData);
   return user;
 };
 
