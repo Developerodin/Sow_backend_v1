@@ -17,7 +17,7 @@ router.delete('/:userId', b2cUserController.deleteUser);
 router.post('/update-profile-type', b2cUserController.updateUserProfileType);
 router.get('/get-profile-type/:userId', b2cUserController.getUserProfileType);
 router.get("/sales-summary/:userId", b2cUserController.getUserSaleSummary);
-router.patch('/update-field', b2cUserController.updateB2CKYCField);
+router.post('/update-field', b2cUserController.updateB2CKYCField);
 // Add a B2B address
 router.post('/address', b2cUserController.addB2CAddress);
 
