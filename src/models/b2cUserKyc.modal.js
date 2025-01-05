@@ -9,23 +9,15 @@ const kycSchema = mongoose.Schema(
     },
     panNumber: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
-      validate(value) {
-        if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value)) {
-          throw new Error('Invalid PAN number format');
-        }
-      },
+
     },
     gstinNumber: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
-      validate(value) {
-        if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(value)) {
-          throw new Error('Invalid GSTIN format');
-        }
-      },
+
     },
     panImage: {
       type: String,

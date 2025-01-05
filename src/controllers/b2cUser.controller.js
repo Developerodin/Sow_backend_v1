@@ -118,6 +118,17 @@ const loginWithOTPController = async (req, res) => {
  */
 const createUser = catchAsync(async (req, res) => {
   const user = await b2cUserService.createUser(req.body);
+  const kycData = {
+    userId: user._id, // Link the KYC record to the new user
+    panNumber: '',
+    gstinNumber: '',
+    panImage: '',
+    gstinImage: '',
+    status: 'pending', // Default status
+    remarks: '', // Optional field, leave empty
+  };
+
+  await B2CKYC.create(kycData);
   res.status(httpStatus.CREATED).send(user);
 });
 
