@@ -359,31 +359,42 @@ const addB2CAddress = async (req, res) => {
     }
   };
 
-  const updateB2CKYCField = catchAsync(async (req, res) => {
-    const { userId, fieldName, fieldValue } = req.body;
+  const updateB2CKYCField = async (req, res) => {
+    try {
+      const { userId, fieldName, fieldValue } = req.body;
   
-    // Validate fieldName to ensure it matches one of the allowed fields
-    const allowedFields = ['panNumber', 'gstinNumber', 'panImage', 'gstinImage', 'status', 'remarks'];
-    if (!allowedFields.includes(fieldName)) {
-      return res.status(httpStatus.BAD_REQUEST).send({ message: 'Invalid field name' });
+      // Validate fieldName to ensure it matches one of the allowed fields
+      const allowedFields = ['panNumber', 'gstinNumber', 'panImage', 'gstinImage', 'status', 'remarks'];
+      if (!allowedFields.includes(fieldName)) {
+        return res.status(400).send({ message: 'Invalid field name' });
+      }
+  
+      // Create an object to dynamically set the field to update
+      const updateData = { [fieldName]: fieldValue };
+  
+      // Find the KYC record by userId and update the specified field
+      const updatedKYC = await B2CKYC.findOneAndUpdate(
+        { userId }, // Find the KYC record by userId
+        updateData, // Update the specified field
+        { new: true, runValidators: true } // Return the updated document and run validators
+      );
+  
+      if (!updatedKYC) {
+        return res.status(404).send({ message: 'KYC record not found for the user' });
+      }
+  
+      res.status(200).send({ message: 'Field updated successfully', updatedKYC });
+    } catch (error) {
+      console.error('Error updating KYC field:', error.message);
+  
+      // Send a generic error response
+      res.status(500).send({
+        message: 'An error occurred while updating the KYC field',
+        error: error.message,
+      });
     }
+  };
   
-    // Create an object to dynamically set the field to update
-    const updateData = { [fieldName]: fieldValue };
-  
-    // Find the KYC record by userId and update the specified field
-    const updatedKYC = await B2CKYC.findOneAndUpdate(
-      { userId }, // Find the KYC record by userId
-      updateData, // Update the specified field
-      { new: true, runValidators: true } // Return the updated document and run validators
-    );
-  
-    if (!updatedKYC) {
-      return res.status(httpStatus.NOT_FOUND).send({ message: 'KYC record not found for the user' });
-    }
-  
-    res.status(httpStatus.OK).send({ message: 'Field updated successfully', updatedKYC });
-  });
 
 
 const updateUserProfileType = async (req, res) => {
