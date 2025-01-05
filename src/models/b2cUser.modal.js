@@ -52,8 +52,9 @@ const b2cUserSchema = mongoose.Schema(
     },
     profileType: {
       type: String,
-      required: true,
-      enum: ['customer', 'industry', 'office', 'shopkeeper'],
+      required: false,
+      enum: ['household', 'office', 'shopkeeper'],
+      default:'household'
     },
     referralCode: {
       type: String,

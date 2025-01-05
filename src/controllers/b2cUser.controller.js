@@ -347,4 +347,71 @@ const addB2CAddress = async (req, res) => {
     }
   };
 
-export { createUser, getUsers, getUser, updateUser, deleteUser, addB2CAddress, deleteB2CAddress, updateB2CAddress, getB2CAllAddressesByUserId, addB2CKycDetails, deleteB2CKycDetails, updateB2CKycDetails, getB2CKycDetailsByUserId, generateOTPController, loginWithOTPController, getB2CUserActiveAddress, setB2CAddressActive };
+
+const updateUserProfileType = async (req, res) => {
+    try {
+      const { userId, profileType } = req.body;
+  
+      // Validate input
+      if (!userId || !profileType) {
+        return res.status(400).json({ message: 'User ID and profile type are required' });
+      }
+  
+      // Validate profileType
+      const validProfileTypes = ['household', 'office', 'shopkeeper'];
+      if (!validProfileTypes.includes(profileType)) {
+        return res.status(400).json({ message: 'Invalid profile type' });
+      }
+  
+      // Find user and update profileType
+      const user = await B2CUser.findByIdAndUpdate(
+        userId,
+        { profileType },
+        { new: true, runValidators: true }
+      );
+  
+      if (!user) {
+        return res.status(400).json({ message: 'User not found' });
+      }
+  
+      return res.status(200).json({
+        message: 'Profile type updated successfully',
+        data: user,
+      });
+    } catch (error) {
+      return res.status(400).json({
+        message: 'An error occurred while updating profile type',
+        error: error.message,
+      });
+    }
+  };
+
+  const getUserProfileType = async (req, res) => {
+    try {
+      const { userId } = req.params; // Assuming userId is passed as a URL parameter
+  
+      // Validate input
+      if (!userId) {
+        return res.status(400).json({ message: 'User ID is required' });
+      }
+  
+      // Find the user by ID
+      const user = await B2CUser.findById(userId, 'profileType'); // Only retrieve the profileType field
+  
+      if (!user) {
+        return res.status(400).json({ message: 'User not found' });
+      }
+  
+      return res.status(200).json({
+        message: 'Profile type retrieved successfully',
+        data: { profileType: user.profileType },
+      });
+    } catch (error) {
+      return res.status(400).json({
+        message: 'An error occurred while retrieving the profile type',
+        error: error.message,
+      });
+    }
+  };
+
+export {getUserProfileType,updateUserProfileType, createUser, getUsers, getUser, updateUser, deleteUser, addB2CAddress, deleteB2CAddress, updateB2CAddress, getB2CAllAddressesByUserId, addB2CKycDetails, deleteB2CKycDetails, updateB2CKycDetails, getB2CKycDetailsByUserId, generateOTPController, loginWithOTPController, getB2CUserActiveAddress, setB2CAddressActive };
