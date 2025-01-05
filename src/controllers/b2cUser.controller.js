@@ -6,6 +6,7 @@ import B2CKYC from '../models/b2cUserKyc.modal.js';
 import generateToken from '../utils/jwt.js';
 import B2CUser from '../models/b2cUser.modal.js';
 import axios from 'axios';
+import B2COrder from '../models/b2cOrder.model.js';
 
 
 const sendOtpSMS = async (mobileNumber, otp) => {
@@ -414,4 +415,59 @@ const updateUserProfileType = async (req, res) => {
     }
   };
 
-export {getUserProfileType,updateUserProfileType, createUser, getUsers, getUser, updateUser, deleteUser, addB2CAddress, deleteB2CAddress, updateB2CAddress, getB2CAllAddressesByUserId, addB2CKycDetails, deleteB2CKycDetails, updateB2CKycDetails, getB2CKycDetailsByUserId, generateOTPController, loginWithOTPController, getB2CUserActiveAddress, setB2CAddressActive };
+  const getUserSaleSummary = async (req, res) => {
+    try {
+      // Extract user ID from request parameters or body
+      const { userId } = req.params;
+  
+      // Ensure userId is provided
+      if (!userId) {
+        return res.status(400).json({ message: "User ID is required." });
+      }
+  
+      // Aggregate data to calculate total weight (kg) sold and total amount earned
+      const saleSummary = await B2COrder.aggregate([
+        {
+          $match: {
+            orderBy: mongoose.Types.ObjectId(userId), // Filter orders by orderBy user ID
+            orderStatus: "Completed", // Only include completed orders in the summary
+          },
+        },
+        {
+          $unwind: "$items", // Deconstruct the items array
+        },
+        {
+          $group: {
+            _id: null,
+            netKgSold: {
+              $sum: {
+                $toDouble: "$items.weight", // Sum up the weights (assumes weight is in kilograms)
+              },
+            },
+            netAmountEarned: {
+              $sum: "$items.totalPrice", // Sum up the total prices
+            },
+          },
+        },
+      ]);
+  
+      // If no data found, return 0 values
+      if (!saleSummary || saleSummary.length === 0) {
+        return res.status(200).json({
+          netKgSold: 0,
+          netAmountEarned: 0,
+        });
+      }
+  
+      // Return the calculated summary
+      return res.status(200).json({
+        netKgSold: saleSummary[0].netKgSold,
+        netAmountEarned: saleSummary[0].netAmountEarned,
+      });
+    } catch (error) {
+      console.error("Error fetching sale summary:", error);
+      return res.status(500).json({ message: "Server error occurred.", error });
+    }
+  };
+
+export {getUserSaleSummary,getUserProfileType,updateUserProfileType, createUser, getUsers, getUser, updateUser, deleteUser, addB2CAddress, deleteB2CAddress, updateB2CAddress, getB2CAllAddressesByUserId, addB2CKycDetails, deleteB2CKycDetails, updateB2CKycDetails, getB2CKycDetailsByUserId, generateOTPController, loginWithOTPController, getB2CUserActiveAddress, setB2CAddressActive };
