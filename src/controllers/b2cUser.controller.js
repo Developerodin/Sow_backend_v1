@@ -359,6 +359,32 @@ const addB2CAddress = async (req, res) => {
     }
   };
 
+  const updateB2CKYCField = catchAsync(async (req, res) => {
+    const { userId, fieldName, fieldValue } = req.body;
+  
+    // Validate fieldName to ensure it matches one of the allowed fields
+    const allowedFields = ['panNumber', 'gstinNumber', 'panImage', 'gstinImage', 'status', 'remarks'];
+    if (!allowedFields.includes(fieldName)) {
+      return res.status(httpStatus.BAD_REQUEST).send({ message: 'Invalid field name' });
+    }
+  
+    // Create an object to dynamically set the field to update
+    const updateData = { [fieldName]: fieldValue };
+  
+    // Find the KYC record by userId and update the specified field
+    const updatedKYC = await B2CKYC.findOneAndUpdate(
+      { userId }, // Find the KYC record by userId
+      updateData, // Update the specified field
+      { new: true, runValidators: true } // Return the updated document and run validators
+    );
+  
+    if (!updatedKYC) {
+      return res.status(httpStatus.NOT_FOUND).send({ message: 'KYC record not found for the user' });
+    }
+  
+    res.status(httpStatus.OK).send({ message: 'Field updated successfully', updatedKYC });
+  });
+
 
 const updateUserProfileType = async (req, res) => {
     try {
@@ -481,4 +507,4 @@ const updateUserProfileType = async (req, res) => {
     }
   };
 
-export {getUserSaleSummary,getUserProfileType,updateUserProfileType, createUser, getUsers, getUser, updateUser, deleteUser, addB2CAddress, deleteB2CAddress, updateB2CAddress, getB2CAllAddressesByUserId, addB2CKycDetails, deleteB2CKycDetails, updateB2CKycDetails, getB2CKycDetailsByUserId, generateOTPController, loginWithOTPController, getB2CUserActiveAddress, setB2CAddressActive };
+export {updateB2CKYCField,getUserSaleSummary,getUserProfileType,updateUserProfileType, createUser, getUsers, getUser, updateUser, deleteUser, addB2CAddress, deleteB2CAddress, updateB2CAddress, getB2CAllAddressesByUserId, addB2CKycDetails, deleteB2CKycDetails, updateB2CKycDetails, getB2CKycDetailsByUserId, generateOTPController, loginWithOTPController, getB2CUserActiveAddress, setB2CAddressActive };
