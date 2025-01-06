@@ -28,9 +28,9 @@ const createQuotation = async (req, res) => {
 const getAllQuotations = async (req, res) => {
   try {
     const quotations = await Quotation.find()
-      .populate('postId', 'title description')
+      .populate('postId', 'title description price quantity state city address categoryName subCategoryName postStatus')
       .populate('b2cUserId', 'firstName lastName')
-      .populate('wholesalerId', 'name registerAs');
+      .populate('wholesalerId', 'name registerAs businessName');
     res.status(200).json(quotations);
   } catch (error) {
     console.error('Error fetching quotations:', error);
@@ -43,7 +43,7 @@ const getQuotation = async (req, res) => {
   try {
     const { id } = req.params;
     const quotation = await Quotation.findById(id)
-    .populate('postId', 'title description price quantity state city address categoryName subCategoryName')
+    .populate('postId', 'title description price quantity state city address categoryName subCategoryName postStatus')
     .populate('b2cUserId', 'firstName lastName')
     .populate('wholesalerId', 'name registerAs businessName');
 
@@ -98,7 +98,7 @@ const getQuotationsByB2CUserId = async (req, res) => {
   try {
     const { b2cUserId } = req.body;
     const quotations = await Quotation.find({ b2cUserId })
-      .populate('postId', 'title description price quantity state city address categoryName subCategoryName')
+      .populate('postId', 'title description price quantity state city address categoryName subCategoryName postStatus')
       .populate('b2cUserId', 'firstName lastName')
       .populate('wholesalerId', 'name registerAs businessName');
 
