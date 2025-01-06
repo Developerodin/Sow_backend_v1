@@ -427,6 +427,10 @@ export default router;
  *                 type: string
  *                 description: The ID of the B2B user
  *                 example: 60d21b4667d0d8992e610c85
+ *               type:
+ *                 type: string
+ *                 description: The type of orders to filter (e.g., 'upcoming')
+ *                 example: upcoming
  *               action:
  *                 type: string
  *                 description: The action type (e.g., 'purchase')
@@ -450,25 +454,27 @@ export default router;
  *                   orderBy:
  *                     type: object
  *                     properties:
- *                       name:
+ *                       firstName:
  *                         type: string
- *                       email:
+ *                       lastName:
+ *                         type: string
+ *                       profileType:
+ *                         type: string
+ *                       phoneNumber:
  *                         type: string
  *                   orderTo:
  *                     type: object
  *                     properties:
  *                       name:
  *                         type: string
- *                       email:
+ *                       registerAs:
+ *                         type: string
+ *                       phoneNumber:
  *                         type: string
  *                   location:
  *                     type: object
  *                     properties:
- *                       address:
- *                         type: string
- *                       city:
- *                         type: string
- *                       state:
+ *                       googleAddress:
  *                         type: string
  *                   orderStatus:
  *                     type: string
