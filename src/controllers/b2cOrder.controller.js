@@ -23,11 +23,7 @@ const createB2cOrder = async (req, res) => {
     // Calculate totalPrice for the entire order by summing up item total prices
     const totalPrice = items.reduce((sum, item) => sum + item.totalPrice, 0);
 
-    // Generate a unique order number
-    // const timestamp = Date.now();
-    // const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-    // const orderNo = `ORD-${timestamp}-${randomSuffix}`;
-
+    // Create a new order instance
     const newB2cOrder = new b2cOrder({
       items,
       orderBy,
@@ -40,23 +36,23 @@ const createB2cOrder = async (req, res) => {
     });
 
     await newB2cOrder.save();
-    const notificationMessage = `A new order has been created: ${newOrder.orderNo}`;
+    const notificationMessage = `A new order has been created: ${newB2cOrder.orderNo}`;
 
     const newNotification = new B2CNotification({
       notification: notificationMessage,
-      orderId: newOrder._id,
+      orderId: newB2cOrder._id,
       orderBy,
       orderTo,
-      orderNo: newOrder.orderNo,
-      orderStatus : newOrder.orderStatus,
-      totalPrice: newOrder.totalPrice
+      orderNo: newB2cOrder.orderNo,
+      orderStatus: newB2cOrder.orderStatus,
+      totalPrice: newB2cOrder.totalPrice
     });
 
     await newNotification.save();
 
     const title = 'New Order';
     const body = `Total Amount: ${totalPrice}`;
-    const data = { orderId: newOrder._id, otp };
+    const data = { orderId: newB2cOrder._id, otp };
 
     // Send notification to the user who created the order
     await sendNotificationByUserId(orderBy, title, body, data);
