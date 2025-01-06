@@ -442,6 +442,39 @@ const verifyOtpAndCompleteOrder = async (req, res) => {
   }
 };
 
+const filterOrdersByB2BUser = async (req, res) => {
+  try {
+    const { userId, type, action } = req.body; // Extract userId, type, and action from the request body
+
+    // Define query filters based on type
+    const statusFilter =
+      type === 'upcoming'
+        ? { orderStatus: 'Pending' }
+        : { orderStatus: { $in: ['Rejected', 'Completed', 'Cancelled'] } };
+
+    const userFilter = action === 'purchase' ? { orderTo: userId } : {};
+
+    // Combine filters
+    const query = { ...statusFilter, ...userFilter };
+
+    // Fetch filtered orders and populate necessary fields
+    const orders = await b2cOrder.find(query)
+      .populate("orderBy", "firstName lastName profileType phoneNumber")
+      .populate("orderTo", "name registerAs phoneNumber")
+      .populate("location", "googleAddress")
+      .exec();
+
+    if (!orders.length) {
+      return res.status(404).json({ message: 'No orders found for the specified criteria.' });
+    }
+
+    res.status(200).json(orders);
+  } catch (error) {
+    console.error('Error filtering orders:', error.message);
+    res.status(500).json({ message: 'An error occurred while filtering orders.' });
+  }
+};
+
 
 export {
   createB2cOrder,
@@ -455,4 +488,5 @@ export {
   getNewOrdersForUser,
   updateOrderStatus,
   verifyOtpAndCompleteOrder,
+  filterOrdersByB2BUser,
 };

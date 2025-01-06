@@ -6,7 +6,7 @@ import {  createB2cOrder,
     deleteB2cOrder,
     getB2cOrdersByUserId,assignOrderToUser,filterOrdersByUserId,
     getNewOrdersForUser,
-    updateOrderStatus,verifyOtpAndCompleteOrder,} from "../../controllers/b2cOrder.controller.js";
+    updateOrderStatus,verifyOtpAndCompleteOrder,filterOrdersByB2BUser} from "../../controllers/b2cOrder.controller.js";
 
 
 const router = express.Router();
@@ -31,6 +31,7 @@ router.get("/user/:userId", getB2cOrdersByUserId);
 router.post("/assignOrderToUser", assignOrderToUser);
 
 router.post("/filterorders", filterOrdersByUserId);
+router.post("/filterordersbyb2buser", filterOrdersByB2BUser);
 router.post("/updateOrderStatus", updateOrderStatus);
 router.post("/getNewOrdersForUser", getNewOrdersForUser);
 router.post("/markcomplete", verifyOtpAndCompleteOrder);
@@ -406,6 +407,84 @@ export default router;
  *         description: Order not found
  *       500:
  *         description: Internal server error
+ */
+
+/**
+ * @swagger
+ * /b2cOrder/filterordersbyb2buser:
+ *   post:
+ *     summary: Filter orders by B2B user
+ *     description: Retrieve orders for a B2B user based on the specified criteria.
+ *     tags: [B2c Orders]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: The ID of the B2B user
+ *                 example: 60d21b4667d0d8992e610c85
+ *               action:
+ *                 type: string
+ *                 description: The action type (e.g., 'purchase')
+ *                 example: purchase
+ *     responses:
+ *       200:
+ *         description: Orders retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                     description: The ID of the order
+ *                   orderNo:
+ *                     type: string
+ *                     description: The order number
+ *                   orderBy:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                   orderTo:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                       email:
+ *                         type: string
+ *                   location:
+ *                     type: object
+ *                     properties:
+ *                       address:
+ *                         type: string
+ *                       city:
+ *                         type: string
+ *                       state:
+ *                         type: string
+ *                   orderStatus:
+ *                     type: string
+ *                     enum: ["Pending", "Rejected", "Completed", "Cancelled"]
+ *                   totalPrice:
+ *                     type: number
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *                   updatedAt:
+ *                     type: string
+ *                     format: date-time
+ *       404:
+ *         description: No orders found for the specified criteria
+ *       500:
+ *         description: An error occurred while filtering orders
  */
 
 /**
