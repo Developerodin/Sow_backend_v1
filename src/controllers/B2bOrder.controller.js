@@ -236,7 +236,7 @@ const getFilteredUsersByRole = async (req, res) => {
 
     // Apply city filter if provided
     if (city) {
-      console.log(`City provided: ${city}. Filtering addresses by city.`);
+      // console.log(`City provided: ${city}. Filtering addresses by city.`);
       addresses = addresses.filter((address) => address.city === city);
     } else {
       console.log('No city provided. Skipping city filter.');

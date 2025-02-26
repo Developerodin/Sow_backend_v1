@@ -5,7 +5,7 @@ import moment from "moment";
 
 const createB2cOrder = async (req, res) => {
   try {
-    console.log("Request body:", req.body);
+    // console.log("Request body:", req.body);
 
     const {
       items,
@@ -179,7 +179,7 @@ const getB2cOrdersByUserId = async (req, res) => {
 
 const assignOrderToUser = async (req, res) => {
   try {
-    console.log("Assigning order to user - Request body:", req.body);
+    // console.log("Assigning order to user - Request body:", req.body);
 
     const { orderId, userId } = req.body;
 
@@ -188,7 +188,7 @@ const assignOrderToUser = async (req, res) => {
       return res.status(400).json({ message: "Order ID and User ID are required" });
     }
 
-    console.log(`Finding order with ID: ${orderId}`);
+    // console.log(`Finding order with ID: ${orderId}`);
     const updatedOrder = await b2cOrder.findByIdAndUpdate(
       orderId,
       { orderTo: userId },

@@ -87,7 +87,7 @@ const loginWithOTPController = async (req, res) => {
   try {
     // Check if the user with the provided phone number exists
     const user = await B2BUser.findOne({ phoneNumber });
-    console.log("User login ==>", user);
+    // console.log("User login ==>", user);
     if (!user) {
       return res.status(200).json({ message: 'User not found' });
     }
@@ -168,7 +168,7 @@ const deleteB2BUser = catchAsync(async (req, res) => {
 const addB2BAddress = async (req, res) => {
   try {
     const { userId, latitude, longitude, googleAddress, buildingName, roadArea, note, addressType, city, state } = req.body;
-     console.log(userId, latitude, longitude, googleAddress, buildingName, city, state)
+    //  console.log(userId, latitude, longitude, googleAddress, buildingName, city, state)
     const address = new B2BAddress({
       userId,
       latitude,

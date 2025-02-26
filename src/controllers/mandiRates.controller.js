@@ -136,7 +136,7 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
 const getAllData = async (req, res) => {
   try {
     const data = await MandiCategoryPrice.find().populate('mandi');
-
+    // console.log("Raw Data Before Processing:", JSON.stringify(data, null, 2));
     // Add priceDifference field for each categoryPrices entry using getPriceDifference2
     const updatedData = await Promise.all(data.map(async (mandiCategoryPrice) => {
       const updatedCategoryPrices = await Promise.all(mandiCategoryPrice.categoryPrices.map(async (categoryPrice) => {

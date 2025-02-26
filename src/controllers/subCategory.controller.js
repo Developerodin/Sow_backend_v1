@@ -104,27 +104,27 @@ const getSubCategoriesByCategoryName = async (req, res) => {
       return res.status(400).json({ message: "Category name is required in the request body" });
     }
 
-    console.log("Received categoryName:", categoryName);
+    // console.log("Received categoryName:", categoryName);
 
     // Step 1: Find the category document by its name
     const category = await Category.findOne({ name: categoryName });
 
     if (!category) {
-      console.log(`Category "${categoryName}" not found`);
+      // console.log(`Category "${categoryName}" not found`);
       return res.status(404).json({ message: "Category not found" });
     }
 
-    console.log("Category found:", category);
+    // console.log("Category found:", category);
 
     // Step 2: Find subcategories using the category's _id
     const subCategories = await SubCategory.find({ categoryId: category._id });
 
     if (subCategories.length === 0) {
-      console.log(`No subcategories found for category "${categoryName}"`);
+      // console.log(`No subcategories found for category "${categoryName}"`);
       return res.status(404).json({ message: "No subcategories found for this category" });
     }
 
-    console.log("Found subcategories:", subCategories);
+    // console.log("Found subcategories:", subCategories);
 
     // Step 3: Return the subcategories in the response
     res.status(200).json(subCategories);
