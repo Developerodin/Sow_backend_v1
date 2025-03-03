@@ -20,7 +20,8 @@ const CategoryPriceSchema = new Schema({
   priceDifference:{
     type: Number,
     required: false,
-  }
+  },
+  timestamps: true,
 });
 
 // Define the MandiCategoryPrice schema
