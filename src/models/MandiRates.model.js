@@ -21,7 +21,9 @@ const CategoryPriceSchema = new Schema({
     type: Number,
     required: false,
   },
-  timestamps: true,
+  
+}, {
+  timestamps: true, // Automatically adds createdAt and updatedAt fields
 });
 
 // Define the MandiCategoryPrice schema
