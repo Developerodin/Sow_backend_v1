@@ -15,17 +15,19 @@ const sendOtpSMS = async (mobileNumber, otp) => {
 
   console.log("send otp ==>",mobileNumber,otp);
   const authorization = 'fXeO8yi0IF29xhjVN5LTB6slYdRrEkSJv3ZtWcMHaoqbPDuAUmLuihz0I8CkVM34y7KJxEeGlFBsSvQt';
-  const route = `otp`;
+  const route = `dlt`;
   const variablesValues = otp;
   const flash = '0';
-
+  const sender_id = 'JOBMOJ';
   const url = 'https://www.fast2sms.com/dev/bulkV2';
-
+   const message = '171550';
   const params = {
     authorization,
     route,
     variables_values: variablesValues,
     flash,
+    sender_id,
+    message,
     numbers: `${mobileNumber}`, // Assuming the mobile number should include the country code (e.g., +91 for India)
   };
 
