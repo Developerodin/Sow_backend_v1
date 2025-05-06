@@ -17,12 +17,17 @@ import DailyRatesRoute from './dailyRates.route.js';
 import NotificationRoute from './b2bNotifications.routes.js';
 import B2CNotificationRoute from './b2cNotifications.routes.js';
 import PostRoute from './post.routes.js';
+import AdminRouter from './Admin.Router.js';
 const router = express.Router();
 
 const defaultRoutes = [
   {
     path: '/auth',
     route: authRoute,
+  },
+  {
+    path: '/admin',
+    route: AdminRouter,
   },
   {
     path: '/users',
