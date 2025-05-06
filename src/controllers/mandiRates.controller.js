@@ -81,7 +81,7 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
       return res.status(400).json({ message: 'Invalid input. Please provide an array of mandi prices.' });
     }
 
-    const bulkOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference }) => {
+    const bulkOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference,date }) => {
       return {
         updateOne: {
           filter: { mandi: mandiId, 'categoryPrices.category': category },
@@ -90,6 +90,7 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
               'categoryPrices.$.subCategory': subCategory || null,
               'categoryPrices.$.price': price || 0,
               'categoryPrices.$.priceDifference': priceDifference || null,
+              'categoryPrices.$.date': date || null,
             },
           },
           upsert: false,
@@ -97,7 +98,7 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
       };
     });
 
-    const upsertOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference }) => {
+    const upsertOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference,date }) => {
       return {
         updateOne: {
           filter: { mandi: mandiId },
@@ -108,6 +109,7 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
                 subCategory: subCategory || null,
                 price: price || 0,
                 priceDifference: priceDifference || null,
+                date: date || null,
               },
             },
           },

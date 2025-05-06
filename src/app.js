@@ -9,6 +9,7 @@ import httpStatus from 'http-status';
 import config from './config/config.js';
 import * as morgan from './config/morgan.js';
 import { jwtStrategy } from './config/passport.js';
+import {Unified_PinCode_Data} from "./config/data.js"
 import { authLimiter } from './middlewares/rateLimiter.js';
 import routes from './routes/v1/index.js';
 import { errorConverter, errorHandler } from './middlewares/error.js';
@@ -50,6 +51,21 @@ if (config.env === 'production') {
   app.use('/v1/auth', authLimiter);
 }
 
+app.get("/v1/unifiedPinCode",async(req,res)=>{
+  try{
+    res.status(200).send({
+      message:"data get success",
+      data:Unified_PinCode_Data,
+      status:"success"
+     });
+  }
+   catch(err){
+    res.status(400).send({
+      message:"fail",
+      error:err
+     });
+   }
+})
 // v1 api routes
 app.use('/v1', routes);
 

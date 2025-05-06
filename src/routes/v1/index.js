@@ -18,6 +18,7 @@ import NotificationRoute from './b2bNotifications.routes.js';
 import B2CNotificationRoute from './b2cNotifications.routes.js';
 import PostRoute from './post.routes.js';
 import AdminRouter from './Admin.Router.js';
+import planRouter from './Plans.Router.js';
 const router = express.Router();
 
 const defaultRoutes = [
@@ -44,6 +45,14 @@ const defaultRoutes = [
   {
     path: '/categories',
     route: categoryRoute,
+  }, 
+  {
+    path: '/daily_rates',
+    route: DailyRatesRoute,
+  }, 
+  {
+    path: '/plans',
+    route: planRouter,
   }, 
   {
     path: '/subcategories',

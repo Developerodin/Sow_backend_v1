@@ -21,6 +21,11 @@ const CategoryPriceSchema = new Schema({
     type: Number,
     required: false,
   },
+  date:{
+    type: Date,
+    required: false,
+    default: Date.now,
+  },
   
 }, {
   timestamps: true, // Automatically adds createdAt and updatedAt fields
