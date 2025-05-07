@@ -194,9 +194,9 @@ const addB2BAddress = async (req, res) => {
 
  const deleteB2BAddress = async (req, res) => {
   try {
-    const { id } = req.params;
-
-    const address = await B2BAddress.findByIdAndDelete(id);
+    const { addressId } = req.params;
+   console.log(" to dleter addressid",addressId);
+    const address = await B2BAddress.findByIdAndDelete(addressId);
 
     if (!address) {
       return res.status(404).json({ success: false, message: 'Address not found' });
