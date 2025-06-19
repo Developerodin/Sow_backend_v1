@@ -144,8 +144,15 @@ const getAllData = async (req, res) => {
       const updatedCategoryPrices = await Promise.all(mandiCategoryPrice.categoryPrices.map(async (categoryPrice) => {
         const { category, subCategory } = categoryPrice;
         
-        // Call getPriceDifference2 to calculate the price difference
+        // Check if mandi exists before accessing its _id
+        if (!mandiCategoryPrice.mandi) {
+          return {
+            ...categoryPrice.toObject(), // Convert to plain object
+            priceDifference: {}, // Return empty object if no mandi
+          };
+        }
         
+        // Call getPriceDifference2 to calculate the price difference
         const priceDifferenceData = await getPriceDifference2(mandiCategoryPrice.mandi._id, category, subCategory) || {};
         
         // Replace the priceDifference field with the result from getPriceDifference2
@@ -221,7 +228,10 @@ const getPriceDifference = async (req, res) => {
 
 const getPriceDifference2 = async (mandiId, category,subCategory) => {
   try {
-   
+    // Check if mandiId is valid
+    if (!mandiId) {
+      return {};
+    }
 
     // Find all MandiCategoryPrice documents for the specified mandiId
     const mandiCategoryPrices = await MandiCategoryPrice.find({ mandi: mandiId });
@@ -265,7 +275,8 @@ const getPriceDifference2 = async (mandiId, category,subCategory) => {
       tag,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Error in getPriceDifference2:', error);
+    return {};
   }
 };
 
@@ -367,7 +378,7 @@ const getMandiByCategory = async (req, res) => {
     const filteredMandis = mandis.map(mandi => {
       const filteredCategoryPrices = mandi.categoryPrices.filter(catPrice => catPrice.category === category);
       return {
-        mandi: mandi.mandi,
+        mandi: mandi.mandi || null, // Handle case where mandi is null
         categoryPrices: filteredCategoryPrices
       };
     });
