@@ -9,7 +9,7 @@ import {
   getCategoryHistory,
   getHistoryByTimeframe,
   getMandiByCategory,
-  saveOrUpdateMandiCategoryPrices
+  saveOrUpdateMandiCategoryPrices,
 } from '../../controllers/mandiRates.controller.js';
 
 const router = express.Router();
@@ -66,13 +66,18 @@ export default router;
  *                     price:
  *                       type: number
  *                       description: Price of the category
+ *                     time:
+ *                       type: string
+ *                       description: Time in Indian 12-hour format (e.g., "10:30 AM", "03:45 PM")
  *             example:
  *               mandi: "63b8e5b934e3e3f7d4a1c6f5"
  *               categoryPrices:
  *                 - category: "Vegetables"
  *                   price: 100
+ *                   time: "10:30 AM"
  *                 - category: "Fruits"
  *                   price: 150
+ *                   time: "03:45 PM"
  *     responses:
  *       "201":
  *         description: Category prices saved successfully
@@ -132,8 +137,12 @@ export default router;
  *               price:
  *                 type: number
  *                 description: Updated price of the category
+ *               time:
+ *                 type: string
+ *                 description: Time in Indian 12-hour format (e.g., "10:30 AM", "03:45 PM")
  *             example:
  *               price: 120
+ *               time: "12:00 PM"
  *     responses:
  *       "200":
  *         description: Category price updated successfully
@@ -371,6 +380,9 @@ export default router;
  *               price:
  *                 type: number
  *                 description: Price of the category
+ *               time:
+ *                 type: string
+ *                 description: Time in Indian 12-hour format (e.g., "10:30 AM", "03:45 PM")
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -385,11 +397,13 @@ export default router;
  *         categoryPrices:
  *           - category: "Vegetables"
  *             price: 100
+ *             time: "10:30 AM"
  *           - category: "Fruits"
  *             price: 150
+ *             time: "03:45 PM"
  *         createdAt: "2024-11-22T10:30:00Z"
  *         updatedAt: "2024-11-22T10:30:00Z"
- * 
+ *
  *     Mandi:
  *       type: object
  *       properties:
@@ -426,7 +440,7 @@ export default router;
  *         categories: ["Category1", "Category2"]
  *         createdAt: "2024-11-22T10:30:00Z"
  *         updatedAt: "2024-11-22T10:30:00Z"
- * 
+ *
  *   responses:
  *     InvalidInput:
  *       description: Invalid input

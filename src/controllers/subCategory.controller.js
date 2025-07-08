@@ -5,7 +5,7 @@ import Category from "../models/category.modal.js";
 // Create a new subcategory
 const createSubCategory = async (req, res) => {
   try {
-    const { categoryId, name, description } = req.body;
+    const { categoryId, name, description , price} = req.body;
     
     // Check if category exists (optional, but good for integrity)
     const category = await Category.findById(categoryId);
@@ -17,6 +17,7 @@ const createSubCategory = async (req, res) => {
       categoryId,
       name,
       description,
+      price,
     });
 
     await newSubCategory.save();

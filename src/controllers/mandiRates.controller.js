@@ -1,5 +1,5 @@
-import MandiCategoryPrice from "../models/MandiRates.model.js";
-import Mandi from "../models/Mandi.model.js";
+import MandiCategoryPrice from '../models/MandiRates.model.js';
+import Mandi from '../models/Mandi.model.js';
 
 
 // Save the entire array of categories with prices
@@ -81,7 +81,20 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
       return res.status(400).json({ message: 'Invalid input. Please provide an array of mandi prices.' });
     }
 
-    const bulkOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference,date }) => {
+    // Validate time format for each mandi price
+    const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/;
+    const invalidTimeEntry = mandiPrices.find(mandiPrice => 
+      mandiPrice.time && !timeRegex.test(mandiPrice.time)
+    );
+    
+    if (invalidTimeEntry) {
+      return res.status(400).json({ 
+        message: 'Invalid time format. Time must be in Indian 12-hour format (e.g., "10:30 AM", "03:45 PM")',
+        invalidTime: invalidTimeEntry.time
+      });
+    }
+
+    const bulkOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference, date, time }) => {
       return {
         updateOne: {
           filter: { mandi: mandiId, 'categoryPrices.category': category },
@@ -91,6 +104,7 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
               'categoryPrices.$.price': price || 0,
               'categoryPrices.$.priceDifference': priceDifference || null,
               'categoryPrices.$.date': date || null,
+              'categoryPrices.$.time': time || null,
             },
           },
           upsert: false,
@@ -98,7 +112,7 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
       };
     });
 
-    const upsertOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference,date }) => {
+    const upsertOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference, date, time }) => {
       return {
         updateOne: {
           filter: { mandi: mandiId },
@@ -110,6 +124,7 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
                 price: price || 0,
                 priceDifference: priceDifference || null,
                 date: date || null,
+                time: time || null,
               },
             },
           },
