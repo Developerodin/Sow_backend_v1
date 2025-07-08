@@ -1067,9 +1067,10 @@ const changeKYCStatus = async (req, res) => {
 
  const getWholesalerData = async (req, res) => {
   try {
-    // Fetch all wholesalers and populate their categories and subcategories
+    // Fetch all wholesalers and populate their categories, subcategories, and addresses
+    console.log('Fetching wholesalers data...');
     const wholesalers = await B2BUser.find({ registerAs: 'Wholesaler' })
-      .select('name category businessName')
+      .select('name category businessName _id')
       .populate({
         path: 'category.sub_category',
         select: 'name price unit status',
@@ -1079,10 +1080,9 @@ const changeKYCStatus = async (req, res) => {
       return res.status(404).json({ message: 'No wholesalers found.' });
     }
 
-    // Extract unique categories, subcategories, and states
+    // Extract unique categories and subcategories
     const uniqueCategories = new Set();
     const uniqueSubCategories = new Set();
-    const uniqueStates = new Set();
 
     wholesalers.forEach((wholesaler) => {
       wholesaler.category.forEach((category) => {
@@ -1091,19 +1091,53 @@ const changeKYCStatus = async (req, res) => {
           uniqueSubCategories.add(subCategory.name);
         });
       });
+    });
 
-      // Assuming each wholesaler has an `address` or `state` field to identify their state
-      if (wholesaler.address && wholesaler.address.state) {
-        uniqueStates.add(wholesaler.address.state);
+    // Get wholesaler IDs
+    const wholesalerIds = wholesalers.map(wholesaler => wholesaler._id);
+
+    // Fetch unique cities with user information from B2B address model - ONLY for wholesalers
+    const addresses = await B2BAddress.find({ 
+      userId: { $in: wholesalerIds } 
+    }, 'userId city state')
+      .populate('userId', 'name businessName');
+
+    const cityMap = new Map();
+
+    addresses.forEach((address) => {
+      if (address.city && address.userId) {
+        if (!cityMap.has(address.city)) {
+          cityMap.set(address.city, {
+            city: address.city,
+            state: address.state,
+            users: []
+          });
+        }
+        
+        const cityData = cityMap.get(address.city);
+        const userInfo = {
+          userId: address.userId._id,
+          name: address.userId.name,
+          businessName: address.userId.businessName
+        };
+        
+        // Check if user is not already added to this city
+        const userExists = cityData.users.some(user => user.userId.toString() === userInfo.userId.toString());
+        if (!userExists) {
+          cityData.users.push(userInfo);
+        }
       }
     });
+
+    // Convert map to array
+    const uniqueCities = Array.from(cityMap.values());
 
     // Prepare response data
     const response = {
       userData: wholesalers,
       uniqueCategories: Array.from(uniqueCategories),
       uniqueSubCategories: Array.from(uniqueSubCategories),
-      uniqueStates: Array.from(uniqueStates),
+      uniqueCities: uniqueCities, // Now includes only wholesaler cities with users
     };
 
     res.status(200).json(response);
