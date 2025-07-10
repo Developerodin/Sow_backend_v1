@@ -79,6 +79,44 @@ const deleteFileFromS3 = async (key) => {
     }
 };
 
+/**
+ * Utility function to upload multiple files to S3
+ * @param {Array} files - Array of file objects from multer
+ * @returns {Promise<Array<{url: string, key: string}>>} - Returns array of file URLs and keys
+ */
+const uploadMultipleFilesToS3 = async (files) => {
+    console.log('Uploading multiple files:', files.length);
+    try {
+        if (!files || files.length === 0) {
+            throw new Error('No files provided');
+        }
+
+        const uploadPromises = files.map(async (file) => {
+            const uniqueFileName = `${Date.now()}-${uuidv4()}${path.extname(file.originalname)}`;
+            
+            const params = {
+                Bucket: aws.s3.bucket,
+                Key: uniqueFileName,
+                Body: file.buffer,
+                ContentType: file.mimetype
+            };
+
+            const uploadResult = await s3Config.upload(params).promise();
+            
+            return {
+                url: uploadResult.Location,
+                key: uploadResult.Key,
+                originalName: file.originalname
+            };
+        });
+
+        return await Promise.all(uploadPromises);
+    } catch (error) {
+        console.error('Error in uploadMultipleFilesToS3:', error);
+        throw error;
+    }
+};
+
 // Controller methods
 const uploadFile = async (req, res) => {
     try {
@@ -104,6 +142,35 @@ const uploadFile = async (req, res) => {
         return res.status(500).json({
             success: false,
             message: error.message || 'Error uploading file',
+            error: error.message
+        });
+    }
+};
+
+const uploadMultipleFiles = async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'No files uploaded'
+            });
+        }
+
+        const uploadedFiles = await uploadMultipleFilesToS3(req.files);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Files uploaded successfully',
+            data: {
+                files: uploadedFiles,
+                totalFiles: uploadedFiles.length
+            }
+        });
+    } catch (error) {
+        console.error('Multiple file upload error:', error);
+        return res.status(500).json({
+            success: false,
+            message: error.message || 'Error uploading files',
             error: error.message
         });
     }
@@ -139,7 +206,9 @@ const deleteFile = async (req, res) => {
 export {
     upload,
     uploadFile,
+    uploadMultipleFiles,
     deleteFile,
     uploadFileToS3,
+    uploadMultipleFilesToS3,
     deleteFileFromS3
 }; 

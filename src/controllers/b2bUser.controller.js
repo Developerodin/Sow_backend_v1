@@ -869,16 +869,49 @@ const getInactiveHistory = async (req, res) => {
 
 const uploadOwnerImage = async (req, res) => {
   try {
+    const { kycId, ownerImages } = req.body;
 
-    const { kycId,ownerImage } = req.body; // Assuming the image URL/path is sent in the request body
+    if (!kycId) {
+      return res.status(400).json({ message: 'KYC ID is required' });
+    }
+
+    if (!ownerImages || !Array.isArray(ownerImages) || ownerImages.length === 0) {
+      return res.status(400).json({ message: 'Owner images array is required and must not be empty' });
+    }
+
+    // Validate each image object
+    for (const image of ownerImages) {
+      if (!image.ownerImageUrl || !image.ownerImageKey) {
+        return res.status(400).json({ message: 'Each image must have ownerImageUrl and ownerImageKey' });
+      }
+    }
 
     const kyc = await B2BKYC.findById(kycId);
-    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+    if (!kyc) {
+      return res.status(404).json({ message: 'KYC entry not found' });
+    }
 
-    kyc.OwnerImage = ownerImage;
+    // Initialize arrays if they don't exist
+    if (!kyc.OwnerImage) kyc.OwnerImage = [];
+    if (!kyc.OwnerImageKey) kyc.OwnerImageKey = [];
+
+    // Add new images to existing arrays
+    ownerImages.forEach(image => {
+      kyc.OwnerImage.push(image.ownerImageUrl);
+      kyc.OwnerImageKey.push(image.ownerImageKey);
+    });
+
     await kyc.save();
 
-    res.status(200).json({ message: 'Owner image uploaded successfully', kyc });
+    res.status(200).json({ 
+      message: 'Owner images uploaded successfully', 
+      data: {
+        kycId: kyc._id,
+        ownerImages: kyc.OwnerImage,
+        ownerImageKeys: kyc.OwnerImageKey,
+        totalImages: kyc.OwnerImage.length
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -886,16 +919,49 @@ const uploadOwnerImage = async (req, res) => {
 
 const uploadWarehouseImage = async (req, res) => {
   try {
-   
-    const { kycId,warehouseImage } = req.body; 
+    const { kycId, warehouseImages } = req.body;
+
+    if (!kycId) {
+      return res.status(400).json({ message: 'KYC ID is required' });
+    }
+
+    if (!warehouseImages || !Array.isArray(warehouseImages) || warehouseImages.length === 0) {
+      return res.status(400).json({ message: 'Warehouse images array is required and must not be empty' });
+    }
+
+    // Validate each image object
+    for (const image of warehouseImages) {
+      if (!image.warehouseImageUrl || !image.warehouseImageKey) {
+        return res.status(400).json({ message: 'Each image must have warehouseImageUrl and warehouseImageKey' });
+      }
+    }
 
     const kyc = await B2BKYC.findById(kycId);
-    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+    if (!kyc) {
+      return res.status(404).json({ message: 'KYC entry not found' });
+    }
 
-    kyc.WareHouseImage = warehouseImage;
+    // Initialize arrays if they don't exist
+    if (!kyc.WareHouseImage) kyc.WareHouseImage = [];
+    if (!kyc.WarehouseImageKey) kyc.WarehouseImageKey = [];
+
+    // Add new images to existing arrays
+    warehouseImages.forEach(image => {
+      kyc.WareHouseImage.push(image.warehouseImageUrl);
+      kyc.WarehouseImageKey.push(image.warehouseImageKey);
+    });
+
     await kyc.save();
 
-    res.status(200).json({ message: 'Warehouse image uploaded successfully', kyc });
+    res.status(200).json({ 
+      message: 'Warehouse images uploaded successfully', 
+      data: {
+        kycId: kyc._id,
+        warehouseImages: kyc.WareHouseImage,
+        warehouseImageKeys: kyc.WarehouseImageKey,
+        totalImages: kyc.WareHouseImage.length
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -909,7 +975,11 @@ const getOwnerImage = async (req, res) => {
     const kyc = await B2BKYC.findById(kycId);
     if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
 
-    res.status(200).json({ ownerImage: kyc.OwnerImage });
+    res.status(200).json({ 
+      ownerImages: kyc.OwnerImage || [],
+      ownerImageKeys: kyc.OwnerImageKey || [],
+      totalImages: (kyc.OwnerImage || []).length
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -919,15 +989,36 @@ const getOwnerImage = async (req, res) => {
 const updateOwnerImage = async (req, res) => {
   try {
     const { kycId } = req.params;
-    const { ownerImage } = req.body;
+    const { ownerImages } = req.body;
+
+    if (!ownerImages || !Array.isArray(ownerImages)) {
+      return res.status(400).json({ message: 'Owner images array is required' });
+    }
+
+    // Validate each image object
+    for (const image of ownerImages) {
+      if (!image.ownerImageUrl || !image.ownerImageKey) {
+        return res.status(400).json({ message: 'Each image must have ownerImageUrl and ownerImageKey' });
+      }
+    }
 
     const kyc = await B2BKYC.findById(kycId);
     if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
 
-    kyc.OwnerImage = ownerImage;
+    // Replace existing images with new ones
+    kyc.OwnerImage = ownerImages.map(image => image.ownerImageUrl);
+    kyc.OwnerImageKey = ownerImages.map(image => image.ownerImageKey);
     await kyc.save();
 
-    res.status(200).json({ message: 'Owner image updated successfully', kyc });
+    res.status(200).json({ 
+      message: 'Owner images updated successfully', 
+      data: {
+        kycId: kyc._id,
+        ownerImages: kyc.OwnerImage,
+        ownerImageKeys: kyc.OwnerImageKey,
+        totalImages: kyc.OwnerImage.length
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -941,7 +1032,11 @@ const getWarehouseImage = async (req, res) => {
     const kyc = await B2BKYC.findById(kycId);
     if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
 
-    res.status(200).json({ warehouseImage: kyc.WareHouseImage });
+    res.status(200).json({ 
+      warehouseImages: kyc.WareHouseImage || [],
+      warehouseImageKeys: kyc.WarehouseImageKey || [],
+      totalImages: (kyc.WareHouseImage || []).length
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -951,15 +1046,36 @@ const getWarehouseImage = async (req, res) => {
 const updateWarehouseImage = async (req, res) => {
   try {
     const { kycId } = req.params;
-    const { warehouseImage } = req.body;
+    const { warehouseImages } = req.body;
+
+    if (!warehouseImages || !Array.isArray(warehouseImages)) {
+      return res.status(400).json({ message: 'Warehouse images array is required' });
+    }
+
+    // Validate each image object
+    for (const image of warehouseImages) {
+      if (!image.warehouseImageUrl || !image.warehouseImageKey) {
+        return res.status(400).json({ message: 'Each image must have warehouseImageUrl and warehouseImageKey' });
+      }
+    }
 
     const kyc = await B2BKYC.findById(kycId);
     if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
 
-    kyc.WareHouseImage = warehouseImage;
+    // Replace existing images with new ones
+    kyc.WareHouseImage = warehouseImages.map(image => image.warehouseImageUrl);
+    kyc.WarehouseImageKey = warehouseImages.map(image => image.warehouseImageKey);
     await kyc.save();
 
-    res.status(200).json({ message: 'Warehouse image updated successfully', kyc });
+    res.status(200).json({ 
+      message: 'Warehouse images updated successfully', 
+      data: {
+        kycId: kyc._id,
+        warehouseImages: kyc.WareHouseImage,
+        warehouseImageKeys: kyc.WarehouseImageKey,
+        totalImages: kyc.WareHouseImage.length
+      }
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -968,7 +1084,11 @@ const updateWarehouseImage = async (req, res) => {
 
 const addB2BKycDetails = async (req, res) => {
   try {
-    const { userId, panNumber, gstinNumber, panImage, gstinImage,OwnerImage,WareHouseImage } = req.body;
+    const { userId, panNumber, gstinNumber, panImage, gstinImage, OwnerImage, WareHouseImage } = req.body;
+
+    // Validate OwnerImage and WareHouseImage as arrays
+    const ownerImages = Array.isArray(OwnerImage) ? OwnerImage : [];
+    const warehouseImages = Array.isArray(WareHouseImage) ? WareHouseImage : [];
 
     const kyc = new B2BKYC({
       userId,
@@ -976,12 +1096,20 @@ const addB2BKycDetails = async (req, res) => {
       gstinNumber,
       panImage,
       gstinImage,
-      OwnerImage,
-      WareHouseImage
+      OwnerImage: ownerImages,
+      WareHouseImage: warehouseImages
     });
 
     await kyc.save();
-    res.status(201).json({ success: true, message: 'KYC details added successfully', data: kyc });
+    res.status(201).json({ 
+      success: true, 
+      message: 'KYC details added successfully', 
+      data: {
+        ...kyc.toObject(),
+        totalOwnerImages: ownerImages.length,
+        totalWarehouseImages: warehouseImages.length
+      }
+    });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -1006,14 +1134,31 @@ const addB2BKycDetails = async (req, res) => {
  const updateB2BKycDetails = async (req, res) => {
   try {
     const { id } = req.params;
+    const updateData = { ...req.body };
 
-    const updatedKyc = await B2BKYC.findByIdAndUpdate(id, req.body, { new: true });
+    // Handle OwnerImage and WareHouseImage as arrays
+    if (updateData.OwnerImage !== undefined) {
+      updateData.OwnerImage = Array.isArray(updateData.OwnerImage) ? updateData.OwnerImage : [];
+    }
+    if (updateData.WareHouseImage !== undefined) {
+      updateData.WareHouseImage = Array.isArray(updateData.WareHouseImage) ? updateData.WareHouseImage : [];
+    }
+
+    const updatedKyc = await B2BKYC.findByIdAndUpdate(id, updateData, { new: true });
 
     if (!updatedKyc) {
       return res.status(404).json({ success: false, message: 'KYC details not found' });
     }
 
-    res.status(200).json({ success: true, message: 'KYC details updated successfully', data: updatedKyc });
+    res.status(200).json({ 
+      success: true, 
+      message: 'KYC details updated successfully', 
+      data: {
+        ...updatedKyc.toObject(),
+        totalOwnerImages: updatedKyc.OwnerImage.length,
+        totalWarehouseImages: updatedKyc.WareHouseImage.length
+      }
+    });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -1023,10 +1168,20 @@ const updateKycDetailsByUserId = async (req, res) => {
   try {
     const { userId } = req.params;
     console.log(`Updating KYC details for userId: ${userId}`);
+    
+    const updateData = { ...req.body };
+
+    // Handle OwnerImage and WareHouseImage as arrays
+    if (updateData.OwnerImage !== undefined) {
+      updateData.OwnerImage = Array.isArray(updateData.OwnerImage) ? updateData.OwnerImage : [];
+    }
+    if (updateData.WareHouseImage !== undefined) {
+      updateData.WareHouseImage = Array.isArray(updateData.WareHouseImage) ? updateData.WareHouseImage : [];
+    }
 
     const updatedKyc = await B2BKYC.findOneAndUpdate(
       { userId },
-      req.body,
+      updateData,
       { new: true, upsert: true } // upsert option will create a new document if one doesn't exist
     );
 
@@ -1034,7 +1189,15 @@ const updateKycDetailsByUserId = async (req, res) => {
       return res.status(404).json({ success: false, message: 'KYC details not found for this user' });
     }
 
-    res.status(200).json({ success: true, message: 'KYC details updated successfully', data: updatedKyc });
+    res.status(200).json({ 
+      success: true, 
+      message: 'KYC details updated successfully', 
+      data: {
+        ...updatedKyc.toObject(),
+        totalOwnerImages: updatedKyc.OwnerImage.length,
+        totalWarehouseImages: updatedKyc.WareHouseImage.length
+      }
+    });
   } catch (error) {
     console.error('Error updating KYC details:', error);
     res.status(400).json({ success: false, message: error.message });
@@ -1053,7 +1216,14 @@ const updateKycDetailsByUserId = async (req, res) => {
       return res.status(404).json({ success: false, message: 'KYC details not found for this user' });
     }
 
-    res.status(200).json({ success: true, data: kycDetails });
+    res.status(200).json({ 
+      success: true, 
+      data: {
+        ...kycDetails.toObject(),
+        totalOwnerImages: kycDetails.OwnerImage ? kycDetails.OwnerImage.length : 0,
+        totalWarehouseImages: kycDetails.WareHouseImage ? kycDetails.WareHouseImage.length : 0
+      }
+    });
   } catch (error) {
     res.status(400).json({ success: false, message: error.message });
   }
@@ -1107,8 +1277,8 @@ const changeKYCStatus = async (req, res) => {
         category.sub_category.forEach((subCategory) => {
           uniqueSubCategories.add(subCategory.name);
         });
+        });
       });
-    });
 
     // Get wholesaler IDs
     const wholesalerIds = wholesalers.map(wholesaler => wholesaler._id);
@@ -1142,7 +1312,7 @@ const changeKYCStatus = async (req, res) => {
         const userExists = cityData.users.some(user => user.userId.toString() === userInfo.userId.toString());
         if (!userExists) {
           cityData.users.push(userInfo);
-        }
+      }
       }
     });
 
