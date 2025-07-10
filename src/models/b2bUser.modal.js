@@ -135,6 +135,10 @@ const b2bUserSchema = mongoose.Schema(
   image:{
     type:String,
     required:false
+  },
+  imageKey:{
+    type:String,
+    required:false
   }
 
   },

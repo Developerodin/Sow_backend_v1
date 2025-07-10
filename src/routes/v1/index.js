@@ -16,6 +16,7 @@ import MarketRatesRoute from './marketRates.routes.js';
 import DailyRatesRoute from './dailyRates.route.js';
 import NotificationRoute from './b2bNotifications.routes.js';
 import B2CNotificationRoute from './b2cNotifications.routes.js';
+import commonRoute from '../common.routes.js';
 import PostRoute from './post.routes.js';
 import AdminRouter from './Admin.Router.js';
 import planRouter from './Plans.Router.js';
@@ -97,6 +98,10 @@ const defaultRoutes = [
   {
     path : '/posts',
     route : PostRoute,
+  },
+  {
+    path : '/files',
+    route : commonRoute,
   },
 ];
 

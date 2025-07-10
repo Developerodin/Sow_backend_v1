@@ -1,8 +1,18 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import Joi from 'joi';
+import { fileURLToPath } from 'url';
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+dotenv.config({ path: path.join(__dirname, '../../.env') });
+
+export const env = process.env.NODE_ENV;
+export const port = process.env.PORT;
+
+
+
 
 const envVarsSchema = Joi.object()
   .keys({
@@ -64,3 +74,12 @@ const config = {
 };
 
 export default config;
+
+export const aws = {
+  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  region: process.env.AWS_REGION,
+  s3: {
+    bucket: process.env.AWS_BUCKET_NAME,
+  },
+};

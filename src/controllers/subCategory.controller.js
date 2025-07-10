@@ -4,6 +4,7 @@ import Category from "../models/category.modal.js";
 
 // Create a new subcategory
 const createSubCategory = async (req, res) => {
+  console.log("createSubCategory", req.body);
   try {
     const { categoryId, name, description , price} = req.body;
     
@@ -23,6 +24,7 @@ const createSubCategory = async (req, res) => {
     await newSubCategory.save();
     res.status(201).json(newSubCategory);
   } catch (error) {
+    console.log("error", error);
     res.status(500).json({ message: error.message });
   }
 };

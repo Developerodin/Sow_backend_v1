@@ -9,6 +9,7 @@ import B2BUser from '../models/b2bUser.modal.js';
 import Mandi from '../models/Mandi.model.js';
 import axios from "axios";
 import generateToken from '../utils/jwt.js';
+import { uploadFileToS3, deleteFileFromS3 } from './common.controller.js';
 
 
 const sendOtpSMS = async (mobileNumber, otp) => {
@@ -729,30 +730,46 @@ const getUserMandis = async (req, res) => {
 
 const updateUserImage = async (req, res) => {
   try {
-    const { userId,image } = req.body;
+    const { userId, imageUrl, imageKey } = req.body;
 
-    if (!userId || !image) {
-      return res.status(400).json({ message: 'User ID and image are required' });
+    if (!userId) {
+      return res.status(400).json({ message: 'User ID is required' });
     }
 
-    // Update the user image
-    const user = await B2BUser.findByIdAndUpdate(
-      userId,
-      { image },
-      { new: true, runValidators: true }
-    );
+    if (!imageUrl || !imageKey) {
+      return res.status(400).json({ message: 'Image URL and key are required' });
+    }
 
-    if (!user) {
+    // Find the user first to get existing image key
+    const existingUser = await B2BUser.findById(userId);
+    if (!existingUser) {
       return res.status(404).json({ message: 'User not found' });
     }
 
+    // Update the user with new image URL and key
+    const user = await B2BUser.findByIdAndUpdate(
+      userId,
+      { 
+        image: imageUrl,
+        imageKey: imageKey
+      },
+      { new: true, runValidators: true }
+    );
+
     res.status(200).json({
       message: 'Image updated successfully',
-      user,
+      data: {
+        user: {
+          id: user._id,
+          name: user.name,
+          image: user.image,
+          imageKey: user.imageKey
+        }
+      }
     });
   } catch (error) {
     console.error('Error updating user image:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ message: 'Internal server error', error: error.message });
   }
 };
 

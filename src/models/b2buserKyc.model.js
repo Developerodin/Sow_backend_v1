@@ -39,7 +39,15 @@ const kycSchema = mongoose.Schema(
       type: String,
       required: false, // Store the file path or URL of the uploaded GSTIN image
     },
+    WarehouseImageKey: {
+      type: String,
+      required: false, // Store the file path or URL of the uploaded GSTIN image
+    },
     OwnerImage: {
+      type: String,
+      required: false, // Store the file path or URL of the uploaded GSTIN image
+    },
+    OwnerImageKey: {
       type: String,
       required: false, // Store the file path or URL of the uploaded GSTIN image
     },
