@@ -6,7 +6,7 @@ import Category from "../models/category.modal.js";
 const createSubCategory = async (req, res) => {
   console.log("createSubCategory", req.body);
   try {
-    const { categoryId, name, description , price} = req.body;
+    const { categoryId, name, description, price, image, imageKey } = req.body;
     
     // Check if category exists (optional, but good for integrity)
     const category = await Category.findById(categoryId);
@@ -14,12 +14,16 @@ const createSubCategory = async (req, res) => {
       return res.status(404).json({ message: "Category not found" });
     }
 
-    const newSubCategory = new SubCategory({
+    const subCategoryData = {
       categoryId,
       name,
       description,
       price,
-    });
+      ...(image && { image }),
+      ...(imageKey && { imageKey })
+    };
+
+    const newSubCategory = new SubCategory(subCategoryData);
 
     await newSubCategory.save();
     res.status(201).json(newSubCategory);
@@ -72,9 +76,19 @@ const getSubCategoryById = async (req, res) => {
 // Update a subcategory by ID
 const updateSubCategory = async (req, res) => {
   try {
+    const { name, description, price, image, imageKey, isTradable } = req.body;
+    
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (price !== undefined) updateData.price = price;
+    if (image !== undefined) updateData.image = image;
+    if (imageKey !== undefined) updateData.imageKey = imageKey;
+    if (isTradable !== undefined) updateData.isTradable = isTradable;
+    
     const updatedSubCategory = await SubCategory.findByIdAndUpdate(
       req.params.id,
-      { $set: req.body },
+      updateData,
       { new: true }
     );
     if (!updatedSubCategory) {
@@ -169,11 +183,11 @@ const updatePriceForAllSubCategories = async (req, res) => {
 
 const uploadSubCategoryImage = async (req, res) => {
   try {
-    const { subcategoryId, image } = req.body;
+    const { subcategoryId, image, imageKey } = req.body;
 
     // Validate the required fields
-    if (!subcategoryId || !image) {
-      return res.status(400).json({ message: 'Subcategory ID and image are required.' });
+    if (!subcategoryId) {
+      return res.status(400).json({ message: 'Subcategory ID is required.' });
     }
 
     // Find the subcategory by ID
@@ -183,8 +197,9 @@ const uploadSubCategoryImage = async (req, res) => {
       return res.status(404).json({ message: 'Subcategory not found.' });
     }
 
-    // Update the image field
-    subCategory.image = image;
+    // Update the image and imageKey fields
+    if (image !== undefined) subCategory.image = image;
+    if (imageKey !== undefined) subCategory.imageKey = imageKey;
 
     // Save the updated document
     await subCategory.save();
@@ -201,21 +216,25 @@ const uploadSubCategoryImage = async (req, res) => {
 
 const updateAllSubCategoryImages = async (req, res) => {
   try {
-    const { base64Image } = req.body;
+    const { image, imageKey } = req.body;
 
-    if (!base64Image) {
-      return res.status(400).json({ message: 'Base64 image string is required' });
+    if (!image && !imageKey) {
+      return res.status(400).json({ message: 'At least image or imageKey is required' });
     }
 
-    // Update all category images
-    const result = await SubCategory.updateMany({}, { image: base64Image });
+    const updateData = {};
+    if (image !== undefined) updateData.image = image;
+    if (imageKey !== undefined) updateData.imageKey = imageKey;
+
+    // Update all subcategory images
+    const result = await SubCategory.updateMany({}, updateData);
 
     res.status(200).json({
-      message: `Updated images for ${result.modifiedCount} categories successfully`,
+      message: `Updated images for ${result.modifiedCount} subcategories successfully`,
     });
   } catch (error) {
-    console.error('Error updating category images:', error);
-    res.status(500).json({ message: 'Failed to update category images', error: error.message });
+    console.error('Error updating subcategory images:', error);
+    res.status(500).json({ message: 'Failed to update subcategory images', error: error.message });
   }
 };
 

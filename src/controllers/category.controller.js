@@ -3,7 +3,16 @@ import Category from '../models/category.modal.js';
 // Create a new category
 const createCategory = async (req, res) => {
   try {
-    const category = await Category.create(req.body);
+    const { name, description, image, imageKey } = req.body;
+    
+    const categoryData = {
+      name,
+      description,
+      ...(image && { image }),
+      ...(imageKey && { imageKey })
+    };
+    
+    const category = await Category.create(categoryData);
     res.status(201).json(category);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -36,7 +45,15 @@ const getCategoryById = async (req, res) => {
 // Update a category by ID
 const updateCategoryById = async (req, res) => {
   try {
-    const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const { name, description, image, imageKey } = req.body;
+    
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (image !== undefined) updateData.image = image;
+    if (imageKey !== undefined) updateData.imageKey = imageKey;
+    
+    const category = await Category.findByIdAndUpdate(req.params.id, updateData, { new: true, runValidators: true });
     if (!category) {
       return res.status(404).json({ message: 'Category not found' });
     }
@@ -60,11 +77,11 @@ const deleteCategoryById = async (req, res) => {
 };
 
 const updateCategoryImage = async (req, res) => {
-  const { categoryId, imageString } = req.body;
+  const { categoryId, image, imageKey } = req.body;
 
   // Validate input
-  if (!categoryId || !imageString) {
-    return res.status(400).json({ message: 'Category ID and image string are required.' });
+  if (!categoryId) {
+    return res.status(400).json({ message: 'Category ID is required.' });
   }
 
   try {
@@ -74,8 +91,9 @@ const updateCategoryImage = async (req, res) => {
       return res.status(404).json({ message: 'Category not found.' });
     }
 
-    // Update the image field with the base64 string
-    category.image = imageString;
+    // Update the image and imageKey fields
+    if (image !== undefined) category.image = image;
+    if (imageKey !== undefined) category.imageKey = imageKey;
 
     // Save the updated category
     await category.save();
@@ -89,14 +107,18 @@ const updateCategoryImage = async (req, res) => {
 
 const updateAllCategoryImages = async (req, res) => {
   try {
-    const { base64Image } = req.body;
+    const { image, imageKey } = req.body;
 
-    if (!base64Image) {
-      return res.status(400).json({ message: 'Base64 image string is required' });
+    if (!image && !imageKey) {
+      return res.status(400).json({ message: 'At least image or imageKey is required' });
     }
 
+    const updateData = {};
+    if (image !== undefined) updateData.image = image;
+    if (imageKey !== undefined) updateData.imageKey = imageKey;
+
     // Update all category images
-    const result = await Category.updateMany({}, { image: base64Image });
+    const result = await Category.updateMany({}, updateData);
 
     res.status(200).json({
       message: `Updated images for ${result.modifiedCount} categories successfully`,

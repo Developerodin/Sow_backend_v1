@@ -25,7 +25,11 @@ const SubCategorySchema = new mongoose.Schema(
       default: true, // Default value set to false
     },
     
-    image:{
+    image: {
+      type: String,
+      required: false,
+    },
+    imageKey: {
       type: String,
       required: false,
     }
