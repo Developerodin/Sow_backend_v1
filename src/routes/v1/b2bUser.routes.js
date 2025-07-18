@@ -47,7 +47,16 @@ import {
   getWarehouseImage,
   updateWarehouseImage,
   getB2BUserActiveAddress,
-  setB2BAddressActive
+  setB2BAddressActive,
+  uploadAadharFrontImage,
+  getAadharFrontImage,
+  updateAadharFrontImage,
+  uploadAadharBackImage,
+  getAadharBackImage,
+  updateAadharBackImage,
+  uploadAadharImages,
+  updateAadharImages,
+  getAadharImages
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
@@ -113,6 +122,15 @@ b2bRoute.get('/kycOwnerImage/:id', getOwnerImage);
 b2bRoute.put('/kycOwnerImage/:id', updateOwnerImage);
 b2bRoute.get('/kycWareHouseImage/:id', getWarehouseImage);
 b2bRoute.put('/kycWareHouseImage/:id', updateWarehouseImage);
+b2bRoute.post('/kycAadharFrontImage', uploadAadharFrontImage);
+b2bRoute.get('/kycAadharFrontImage/:kycId', getAadharFrontImage);
+b2bRoute.put('/kycAadharFrontImage/:kycId', updateAadharFrontImage);
+b2bRoute.post('/kycAadharBackImage', uploadAadharBackImage);
+b2bRoute.get('/kycAadharBackImage/:kycId', getAadharBackImage);
+b2bRoute.put('/kycAadharBackImage/:kycId', updateAadharBackImage);
+b2bRoute.post('/kycAadharImages', uploadAadharImages);
+b2bRoute.get('/kycAadharImages/:kycId', getAadharImages);
+b2bRoute.put('/kycAadharImages/:kycId', updateAadharImages);
 // Delete a B2B KYC details
 b2bRoute.delete('/kyc/:id', deleteB2BKycDetails);
 

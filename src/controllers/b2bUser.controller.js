@@ -1081,15 +1081,250 @@ const updateWarehouseImage = async (req, res) => {
   }
 };
 
+// Upload Aadhar Front Image
+const uploadAadharFrontImage = async (req, res) => {
+  try {
+    const { kycId, aadharFrontImageUrl, aadharFrontImageKey } = req.body;
+    if (!kycId) {
+      return res.status(400).json({ message: 'KYC ID is required' });
+    }
+    if (!aadharFrontImageUrl || !aadharFrontImageKey) {
+      return res.status(400).json({ message: 'Aadhar front image URL and key are required' });
+    }
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) {
+      return res.status(404).json({ message: 'KYC entry not found' });
+    }
+    kyc.aadharFrontImage = aadharFrontImageUrl;
+    kyc.aadharFrontImageKey = aadharFrontImageKey;
+    await kyc.save();
+    res.status(200).json({
+      message: 'Aadhar front image uploaded successfully',
+      data: {
+        kycId: kyc._id,
+        aadharFrontImage: kyc.aadharFrontImage,
+        aadharFrontImageKey: kyc.aadharFrontImageKey
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Upload Aadhar Back Image
+const uploadAadharBackImage = async (req, res) => {
+  try {
+    const { kycId, aadharBackImageUrl, aadharBackImageKey } = req.body;
+    if (!kycId) {
+      return res.status(400).json({ message: 'KYC ID is required' });
+    }
+    if (!aadharBackImageUrl || !aadharBackImageKey) {
+      return res.status(400).json({ message: 'Aadhar back image URL and key are required' });
+    }
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) {
+      return res.status(404).json({ message: 'KYC entry not found' });
+    }
+    kyc.aadharBackImage = aadharBackImageUrl;
+    kyc.aadharBackImageKey = aadharBackImageKey;
+    await kyc.save();
+    res.status(200).json({
+      message: 'Aadhar back image uploaded successfully',
+      data: {
+        kycId: kyc._id,
+        aadharBackImage: kyc.aadharBackImage,
+        aadharBackImageKey: kyc.aadharBackImageKey
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get Aadhar Front Image
+const getAadharFrontImage = async (req, res) => {
+  try {
+    const { kycId } = req.params;
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+    res.status(200).json({
+      aadharFrontImage: kyc.aadharFrontImage || null,
+      aadharFrontImageKey: kyc.aadharFrontImageKey || null
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Update Aadhar Front Image
+const updateAadharFrontImage = async (req, res) => {
+  try {
+    const { kycId } = req.params;
+    const { aadharFrontImageUrl, aadharFrontImageKey } = req.body;
+    if (!aadharFrontImageUrl || !aadharFrontImageKey) {
+      return res.status(400).json({ message: 'Aadhar front image URL and key are required' });
+    }
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+    kyc.aadharFrontImage = aadharFrontImageUrl;
+    kyc.aadharFrontImageKey = aadharFrontImageKey;
+    await kyc.save();
+    res.status(200).json({
+      message: 'Aadhar front image updated successfully',
+      data: {
+        kycId: kyc._id,
+        aadharFrontImage: kyc.aadharFrontImage,
+        aadharFrontImageKey: kyc.aadharFrontImageKey
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get Aadhar Back Image
+const getAadharBackImage = async (req, res) => {
+  try {
+    const { kycId } = req.params;
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+    res.status(200).json({
+      aadharBackImage: kyc.aadharBackImage || null,
+      aadharBackImageKey: kyc.aadharBackImageKey || null
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Update Aadhar Back Image
+const updateAadharBackImage = async (req, res) => {
+  try {
+    const { kycId } = req.params;
+    const { aadharBackImageUrl, aadharBackImageKey } = req.body;
+    if (!aadharBackImageUrl || !aadharBackImageKey) {
+      return res.status(400).json({ message: 'Aadhar back image URL and key are required' });
+    }
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+    kyc.aadharBackImage = aadharBackImageUrl;
+    kyc.aadharBackImageKey = aadharBackImageKey;
+    await kyc.save();
+    res.status(200).json({
+      message: 'Aadhar back image updated successfully',
+      data: {
+        kycId: kyc._id,
+        aadharBackImage: kyc.aadharBackImage,
+        aadharBackImageKey: kyc.aadharBackImageKey
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Unified: Upload both Aadhar images
+const uploadAadharImages = async (req, res) => {
+  try {
+    const { kycId, aadharFrontImageUrl, aadharFrontImageKey, aadharBackImageUrl, aadharBackImageKey } = req.body;
+    if (!kycId) {
+      return res.status(400).json({ message: 'KYC ID is required' });
+    }
+    if (!aadharFrontImageUrl || !aadharFrontImageKey || !aadharBackImageUrl || !aadharBackImageKey) {
+      return res.status(400).json({ message: 'All Aadhar image URLs and keys are required' });
+    }
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) {
+      return res.status(404).json({ message: 'KYC entry not found' });
+    }
+    kyc.aadharFrontImage = aadharFrontImageUrl;
+    kyc.aadharFrontImageKey = aadharFrontImageKey;
+    kyc.aadharBackImage = aadharBackImageUrl;
+    kyc.aadharBackImageKey = aadharBackImageKey;
+    await kyc.save();
+    res.status(200).json({
+      message: 'Aadhar images uploaded successfully',
+      data: {
+        kycId: kyc._id,
+        aadharFrontImage: kyc.aadharFrontImage,
+        aadharFrontImageKey: kyc.aadharFrontImageKey,
+        aadharBackImage: kyc.aadharBackImage,
+        aadharBackImageKey: kyc.aadharBackImageKey
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Unified: Update both Aadhar images
+const updateAadharImages = async (req, res) => {
+  try {
+    const { kycId } = req.params;
+    const { aadharFrontImageUrl, aadharFrontImageKey, aadharBackImageUrl, aadharBackImageKey } = req.body;
+    if (!aadharFrontImageUrl || !aadharFrontImageKey || !aadharBackImageUrl || !aadharBackImageKey) {
+      return res.status(400).json({ message: 'All Aadhar image URLs and keys are required' });
+    }
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+    kyc.aadharFrontImage = aadharFrontImageUrl;
+    kyc.aadharFrontImageKey = aadharFrontImageKey;
+    kyc.aadharBackImage = aadharBackImageUrl;
+    kyc.aadharBackImageKey = aadharBackImageKey;
+    await kyc.save();
+    res.status(200).json({
+      message: 'Aadhar images updated successfully',
+      data: {
+        kycId: kyc._id,
+        aadharFrontImage: kyc.aadharFrontImage,
+        aadharFrontImageKey: kyc.aadharFrontImageKey,
+        aadharBackImage: kyc.aadharBackImage,
+        aadharBackImageKey: kyc.aadharBackImageKey
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Unified: Get both Aadhar images
+const getAadharImages = async (req, res) => {
+  try {
+    const { kycId } = req.params;
+    const kyc = await B2BKYC.findById(kycId);
+    if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
+    res.status(200).json({
+      aadharFrontImage: kyc.aadharFrontImage || null,
+      aadharFrontImageKey: kyc.aadharFrontImageKey || null,
+      aadharBackImage: kyc.aadharBackImage || null,
+      aadharBackImageKey: kyc.aadharBackImageKey || null
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 
 const addB2BKycDetails = async (req, res) => {
   try {
-    const { userId, panNumber, gstinNumber, panImage, gstinImage, OwnerImage, WareHouseImage } = req.body;
+    const { 
+      userId, 
+      panNumber, 
+      gstinNumber, 
+      panImage, 
+      gstinImage, 
+      OwnerImage, 
+      WareHouseImage,
+      aadharFrontImage,
+      aadharFrontImageKey,
+      aadharBackImage,
+      aadharBackImageKey
+    } = req.body;
 
     // Validate OwnerImage and WareHouseImage as arrays
     const ownerImages = Array.isArray(OwnerImage) ? OwnerImage : [];
     const warehouseImages = Array.isArray(WareHouseImage) ? WareHouseImage : [];
-
+          
     const kyc = new B2BKYC({
       userId,
       panNumber,
@@ -1097,7 +1332,11 @@ const addB2BKycDetails = async (req, res) => {
       panImage,
       gstinImage,
       OwnerImage: ownerImages,
-      WareHouseImage: warehouseImages
+      WareHouseImage: warehouseImages,
+      aadharFrontImage,
+      aadharFrontImageKey,
+      aadharBackImage,
+      aadharBackImageKey
     });
 
     await kyc.save();
@@ -1144,6 +1383,20 @@ const addB2BKycDetails = async (req, res) => {
       updateData.WareHouseImage = Array.isArray(updateData.WareHouseImage) ? updateData.WareHouseImage : [];
     }
 
+    // Handle Aadhar images (single images, not arrays)
+    if (updateData.aadharFrontImage !== undefined) {
+      updateData.aadharFrontImage = updateData.aadharFrontImage;
+    }
+    if (updateData.aadharFrontImageKey !== undefined) {
+      updateData.aadharFrontImageKey = updateData.aadharFrontImageKey;
+    }
+    if (updateData.aadharBackImage !== undefined) {
+      updateData.aadharBackImage = updateData.aadharBackImage;
+    }
+    if (updateData.aadharBackImageKey !== undefined) {
+      updateData.aadharBackImageKey = updateData.aadharBackImageKey;
+    }
+
     const updatedKyc = await B2BKYC.findByIdAndUpdate(id, updateData, { new: true });
 
     if (!updatedKyc) {
@@ -1177,6 +1430,20 @@ const updateKycDetailsByUserId = async (req, res) => {
     }
     if (updateData.WareHouseImage !== undefined) {
       updateData.WareHouseImage = Array.isArray(updateData.WareHouseImage) ? updateData.WareHouseImage : [];
+    }
+
+    // Handle Aadhar images (single images, not arrays)
+    if (updateData.aadharFrontImage !== undefined) {
+      updateData.aadharFrontImage = updateData.aadharFrontImage;
+    }
+    if (updateData.aadharFrontImageKey !== undefined) {
+      updateData.aadharFrontImageKey = updateData.aadharFrontImageKey;
+    }
+    if (updateData.aadharBackImage !== undefined) {
+      updateData.aadharBackImage = updateData.aadharBackImage;
+    }
+    if (updateData.aadharBackImageKey !== undefined) {
+      updateData.aadharBackImageKey = updateData.aadharBackImageKey;
     }
 
     const updatedKyc = await B2BKYC.findOneAndUpdate(
@@ -1458,6 +1725,14 @@ export {
   getWarehouseImage,
   updateWarehouseImage,
   getB2BUserActiveAddress,
-  setB2BAddressActive
-
+  setB2BAddressActive,
+  uploadAadharFrontImage,
+  uploadAadharBackImage,
+  getAadharFrontImage,
+  updateAadharFrontImage,
+  getAadharBackImage,
+  updateAadharBackImage,
+  uploadAadharImages,
+  updateAadharImages,
+  getAadharImages,
 };

@@ -1,4 +1,4 @@
-import  mongoose  from "mongoose";
+import mongoose from 'mongoose';
 
 const orderSchema = mongoose.Schema(
     {
@@ -51,8 +51,14 @@ const orderSchema = mongoose.Schema(
             required : true,
         },
         photos: {
-            type: [String],
+            type: [String], // Array of photo URLs
             required: false,
+            default: []
+        },
+        photoKeys: {
+            type: [String], // Array of photo keys for S3
+            required: false,
+            default: []
         },
         orderStatus : {
             type : String,

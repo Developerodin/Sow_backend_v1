@@ -35,6 +35,22 @@ const kycSchema = mongoose.Schema(
       type: String,
       required: false, // Store the file path or URL of the uploaded GSTIN image
     },
+    aadharFrontImage: {
+      type: String, // Single Aadhar front image URL
+      required: false,
+    },
+    aadharFrontImageKey: {
+      type: String, // Single Aadhar front image key
+      required: false,
+    },
+    aadharBackImage: {
+      type: String, // Single Aadhar back image URL
+      required: false,
+    },
+    aadharBackImageKey: {
+      type: String, // Single Aadhar back image key
+      required: false,
+    },
     WareHouseImage: {
       type: [String], // Array of warehouse image URLs
       required: false,

@@ -63,6 +63,7 @@ const uploadFileToS3 = async (file) => {
  * @param {string} key - The file key in S3
  * @returns {Promise<void>}
  */
+
 const deleteFileFromS3 = async (key) => {
     try {
         if (!key) {
@@ -78,6 +79,7 @@ const deleteFileFromS3 = async (key) => {
         throw error;
     }
 };
+
 
 /**
  * Utility function to upload multiple files to S3
@@ -156,6 +158,7 @@ const uploadMultipleFiles = async (req, res) => {
             });
         }
 
+        
         const uploadedFiles = await uploadMultipleFilesToS3(req.files);
 
         return res.status(200).json({

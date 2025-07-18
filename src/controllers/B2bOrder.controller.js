@@ -19,10 +19,45 @@ const createOrder = async (req, res) => {
       value,
       totalPrice,
       photos,
+      photoKeys,
       orderStatus,
     } = req.body;
     const otp = Math.floor(1000 + Math.random() * 9000);
-    const images = photos !== "" ? JSON.parse(photos) : [] || []
+    
+    // Handle photos as array - can be empty, single, or multiple
+    let photoUrls = [];
+    let photoKeyArray = [];
+    
+    if (photos) {
+      if (typeof photos === 'string') {
+        // If photos is a string, try to parse it as JSON
+        try {
+          photoUrls = photos !== "" ? JSON.parse(photos) : [];
+        } catch (e) {
+          // If parsing fails, treat it as a single URL
+          photoUrls = [photos];
+        }
+      } else if (Array.isArray(photos)) {
+        // If photos is already an array
+        photoUrls = photos;
+      }
+    }
+    
+    if (photoKeys) {
+      if (typeof photoKeys === 'string') {
+        // If photoKeys is a string, try to parse it as JSON
+        try {
+          photoKeyArray = photoKeys !== "" ? JSON.parse(photoKeys) : [];
+        } catch (e) {
+          // If parsing fails, treat it as a single key
+          photoKeyArray = [photoKeys];
+        }
+      } else if (Array.isArray(photoKeys)) {
+        // If photoKeys is already an array
+        photoKeyArray = photoKeys;
+      }
+    }
+    
     // Create the new order object without orderNo (it will be generated automatically)
     const newOrder = new Order({
       category,
@@ -35,7 +70,8 @@ const createOrder = async (req, res) => {
       notes,
       value,
       totalPrice,
-      photos:images,
+      photos: photoUrls,
+      photoKeys: photoKeyArray,
       orderStatus,
       otp
     });

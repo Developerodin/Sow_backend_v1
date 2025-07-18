@@ -4,7 +4,7 @@ import Notification from "../models/b2bNotification.js";
 
  export const createNotification = async (req, res) => {
   try {
-    const { notification, orderId, orderBy, orderTo, orderNo,orderStatus  } = req.body;
+    const { notification, orderId, orderBy, orderTo, orderNo, orderStatus  } = req.body;
 
     if (!notification || !orderId || !orderBy || !orderTo || !orderNo) {
       return res.status(400).json({ message: 'All fields are required.' });
