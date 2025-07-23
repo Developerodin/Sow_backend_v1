@@ -9,6 +9,12 @@ const timeFormatValidator = function(value) {
   return timeRegex.test(value);
 };
 
+// Custom validator for unit format
+const unitFormatValidator = function(value) {
+  if (!value) return true; // Allow empty/null values since it's not required
+  return ['Kg', 'Ton'].includes(value);
+};
+
 // Define the CategoryPrice schema
 const CategoryPriceSchema = new Schema({
   category: {
@@ -27,6 +33,15 @@ const CategoryPriceSchema = new Schema({
   priceDifference: {
     type: Number,
     required: false,
+  },
+  unit: {
+    type: String,
+    required: false,
+    enum: ['Kg', 'Ton'],
+    validate: {
+      validator: unitFormatValidator,
+      message: 'Unit must be either "Kg" or "Ton"'
+    }
   },
   date: {
     type: Date,

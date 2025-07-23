@@ -1,13 +1,27 @@
+import mongoose from 'mongoose';
 import MandiCategoryPrice from '../models/MandiRates.model.js';
 import Mandi from '../models/Mandi.model.js';
-import Notification from "../models/b2bNotification.js";
-import { sendNotificationToAllUsers } from "./pushNotifications.controller.js";
-
+import Notification from '../models/b2bNotification.js';
+import { sendNotificationToAllUsers } from './pushNotifications.controller.js';
 
 // Save the entire array of categories with prices
 const saveCategoryPrices = async (req, res) => {
   try {
     const { mandi, categoryPrices } = req.body;
+    
+    // Validate unit format for each category price
+    const unitRegex = /^(Kg|Ton)$/;
+    const invalidUnitEntry = categoryPrices.find(catPrice => 
+      catPrice.unit && !unitRegex.test(catPrice.unit)
+    );
+    
+    if (invalidUnitEntry) {
+      return res.status(400).json({ 
+        message: 'Invalid unit format. Unit must be either "Kg" or "Ton"',
+        invalidUnit: invalidUnitEntry.unit
+      });
+    }
+    
     const newMandiCategoryPrice = new MandiCategoryPrice({ mandi, categoryPrices });
     await newMandiCategoryPrice.save();
     res.status(201).json(newMandiCategoryPrice);
@@ -15,12 +29,14 @@ const saveCategoryPrices = async (req, res) => {
     // Push Notification logic
     try {
       await sendNotificationToAllUsers(
-        "New Rates available",
-        "Check out the latest mandi rates.",
-        { type: "mandiRatesUpdate" }
+        'New Rates available',
+        'Check out the latest mandi rates.',
+        {
+          type: 'mandiRatesUpdate',
+        }
       );
     } catch (notifyErr) {
-      console.error("Push notification error:", notifyErr);
+      console.error('Push notification error:', notifyErr);
     }
 
   } catch (error) {
@@ -31,14 +47,23 @@ const saveCategoryPrices = async (req, res) => {
 // Update a price of a single category
 const updateCategoryPrice = async (req, res) => {
   try {
-    const { mandiId, category,subCategory } = req.params;
-    const { newPrice } = req.body;
+    const { mandiId, category, subCategory } = req.params;
+    const { newPrice, unit } = req.body;
+
+    // Validate unit format if provided
+    if (unit && !['Kg', 'Ton'].includes(unit)) {
+      return res.status(400).json({ 
+        message: 'Invalid unit format. Unit must be either "Kg" or "Ton"',
+        invalidUnit: unit
+      });
+    }
 
     const mandiCategoryPrice = await MandiCategoryPrice.findOne({ mandi: mandiId });
     const categoryPrice = mandiCategoryPrice.categoryPrices.find(cp => cp.category === category && cp.subCategory === subCategory);
 
     if (categoryPrice) {
-      categoryPrice.price = newPrice;
+      if (newPrice !== undefined) categoryPrice.price = newPrice;
+      if (unit !== undefined) categoryPrice.unit = unit;
       await mandiCategoryPrice.save();
       res.status(200).json(mandiCategoryPrice);
     } else {
@@ -89,26 +114,86 @@ const deleteCategoryPrice = async (req, res) => {
 
 const saveOrUpdateMandiCategoryPrices = async (req, res) => {
   try {
+    console.log('Request body:', JSON.stringify(req.body, null, 2));
     const { mandiPrices } = req.body; // Array of objects containing mandiId, category, subCategory, price, and priceDifference
 
+    console.log('mandiPrices:', mandiPrices);
+    console.log('Is array?', Array.isArray(mandiPrices));
+
     if (!mandiPrices || !Array.isArray(mandiPrices)) {
+      console.log('Validation failed: mandiPrices is not valid');
       return res.status(400).json({ message: 'Invalid input. Please provide an array of mandi prices.' });
     }
 
-    // Validate time format for each mandi price
+    console.log('Total entries received:', mandiPrices.length);
+
+    // Filter out invalid mandi IDs and track skipped entries
+    const validMandiPrices = [];
+    const skippedEntries = [];
+
+    mandiPrices.forEach((entry, index) => {
+      const { mandiId, category, subCategory } = entry;
+      
+      console.log(`Processing entry ${index}:`, { mandiId, category, subCategory });
+      
+      // Check if mandiId is valid
+      if (!mandiId || mandiId === "N/A" || !mongoose.Types.ObjectId.isValid(mandiId)) {
+        const reason = !mandiId ? 'Missing mandiId' : mandiId === "N/A" ? 'Invalid mandiId: N/A' : 'Invalid ObjectId format';
+        console.log(`Skipping entry ${index}: ${reason}`);
+        skippedEntries.push({
+          index,
+          mandiId,
+          category,
+          subCategory,
+          reason
+        });
+      } else {
+        validMandiPrices.push(entry);
+      }
+    });
+
+    console.log('Valid entries:', validMandiPrices.length);
+    console.log('Skipped entries:', skippedEntries.length);
+
+    // If no valid entries, return error
+    if (validMandiPrices.length === 0) {
+      console.log('No valid entries found, returning 400');
+      return res.status(400).json({ 
+        message: 'No valid mandi IDs found in the data. All entries have invalid mandiId values.',
+        skippedEntries
+      });
+    }
+
+    // Validate time format for valid mandi prices
     const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/;
-    const invalidTimeEntry = mandiPrices.find(mandiPrice => 
+    const invalidTimeEntry = validMandiPrices.find(mandiPrice => 
       mandiPrice.time && !timeRegex.test(mandiPrice.time)
     );
     
     if (invalidTimeEntry) {
+      console.log('Invalid time format found:', invalidTimeEntry.time);
       return res.status(400).json({ 
         message: 'Invalid time format. Time must be in Indian 12-hour format (e.g., "10:30 AM", "03:45 PM")',
         invalidTime: invalidTimeEntry.time
       });
     }
 
-    const bulkOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference, date, time }) => {
+    // Validate unit format for valid mandi prices
+    const invalidUnitEntry = validMandiPrices.find(mandiPrice => 
+      mandiPrice.unit && !['Kg', 'Ton'].includes(mandiPrice.unit)
+    );
+    
+    if (invalidUnitEntry) {
+      console.log('Invalid unit format found:', invalidUnitEntry.unit);
+      return res.status(400).json({ 
+        message: 'Invalid unit format. Unit must be either "Kg" or "Ton"',
+        invalidUnit: invalidUnitEntry.unit
+      });
+    }
+
+    console.log('Starting bulk operations...');
+
+    const bulkOperations = validMandiPrices.map(({ mandiId, category, subCategory, price, priceDifference, unit, date, time }) => {
       return {
         updateOne: {
           filter: { mandi: mandiId, 'categoryPrices.category': category },
@@ -117,6 +202,7 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
               'categoryPrices.$.subCategory': subCategory || null,
               'categoryPrices.$.price': price || 0,
               'categoryPrices.$.priceDifference': priceDifference || null,
+              'categoryPrices.$.unit': unit || null,
               'categoryPrices.$.date': date || null,
               'categoryPrices.$.time': time || null,
             },
@@ -126,7 +212,7 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
       };
     });
 
-    const upsertOperations = mandiPrices.map(({ mandiId, category, subCategory, price, priceDifference, date, time }) => {
+    const upsertOperations = validMandiPrices.map(({ mandiId, category, subCategory, price, priceDifference, unit, date, time }) => {
       return {
         updateOne: {
           filter: { mandi: mandiId },
@@ -137,6 +223,7 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
                 subCategory: subCategory || null,
                 price: price || 0,
                 priceDifference: priceDifference || null,
+                unit: unit || null,
                 date: date || null,
                 time: time || null,
               },
@@ -150,22 +237,39 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
     // Perform bulk write for both update and upsert operations
     const bulkWriteOperations = [...bulkOperations, ...upsertOperations];
 
+    console.log('Executing bulkWrite with', bulkWriteOperations.length, 'operations');
     await MandiCategoryPrice.bulkWrite(bulkWriteOperations);
+    console.log('BulkWrite completed successfully');
 
     // Push Notification logic
     try {
       await sendNotificationToAllUsers(
-        "New Rates available",
-        "Check out the latest mandi rates.",
-        { type: "mandiRatesUpdate" }
+        'New Rates available',
+        'Check out the latest mandi rates.',
+        {
+          type: 'mandiRatesUpdate',
+        }
       );
     } catch (notifyErr) {
-      console.error("Push notification error:", notifyErr);
+      console.error('Push notification error:', notifyErr);
     }
 
-    res.status(200).json({ message: 'Mandi prices updated successfully.' });
+    // Prepare response message
+    let responseMessage = `Mandi prices updated successfully. Processed ${validMandiPrices.length} entries.`;
+    
+    if (skippedEntries.length > 0) {
+      responseMessage += ` Skipped ${skippedEntries.length} entries with invalid mandi IDs.`;
+    }
+
+    console.log('Sending success response:', responseMessage);
+    res.status(200).json({ 
+      message: responseMessage,
+      processed: validMandiPrices.length,
+      skipped: skippedEntries.length,
+      skippedEntries: skippedEntries.length > 0 ? skippedEntries : undefined
+    });
   } catch (error) {
-    console.error(error);
+    console.error('Error in saveOrUpdateMandiCategoryPrices:', error);
     res.status(500).json({ message: 'An error occurred while saving mandi prices.', error: error.message });
   }
 };

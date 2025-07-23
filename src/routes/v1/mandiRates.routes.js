@@ -63,9 +63,19 @@ export default router;
  *                     category:
  *                       type: string
  *                       description: Category name
+ *                     subCategory:
+ *                       type: string
+ *                       description: Sub-category name
  *                     price:
  *                       type: number
  *                       description: Price of the category
+ *                     priceDifference:
+ *                       type: number
+ *                       description: Price difference from previous rate
+ *                     unit:
+ *                       type: string
+ *                       enum: [Kg, Ton]
+ *                       description: Unit of measurement (Kg or Ton)
  *                     time:
  *                       type: string
  *                       description: Time in Indian 12-hour format (e.g., "10:30 AM", "03:45 PM")
@@ -73,10 +83,16 @@ export default router;
  *               mandi: "63b8e5b934e3e3f7d4a1c6f5"
  *               categoryPrices:
  *                 - category: "Vegetables"
+ *                   subCategory: "Tomatoes"
  *                   price: 100
+ *                   priceDifference: 10
+ *                   unit: "Kg"
  *                   time: "10:30 AM"
  *                 - category: "Fruits"
+ *                   subCategory: "Apples"
  *                   price: 150
+ *                   priceDifference: -5
+ *                   unit: "Ton"
  *                   time: "03:45 PM"
  *     responses:
  *       "201":
@@ -134,14 +150,19 @@ export default router;
  *           schema:
  *             type: object
  *             properties:
- *               price:
+ *               newPrice:
  *                 type: number
  *                 description: Updated price of the category
+ *               unit:
+ *                 type: string
+ *                 enum: [Kg, Ton]
+ *                 description: Unit of measurement (Kg or Ton)
  *               time:
  *                 type: string
  *                 description: Time in Indian 12-hour format (e.g., "10:30 AM", "03:45 PM")
  *             example:
- *               price: 120
+ *               newPrice: 120
+ *               unit: "Kg"
  *               time: "12:00 PM"
  *     responses:
  *       "200":
@@ -377,9 +398,19 @@ export default router;
  *               category:
  *                 type: string
  *                 description: Category name
+ *               subCategory:
+ *                 type: string
+ *                 description: Sub-category name
  *               price:
  *                 type: number
  *                 description: Price of the category
+ *               priceDifference:
+ *                 type: number
+ *                 description: Price difference from previous rate
+ *               unit:
+ *                 type: string
+ *                 enum: [Kg, Ton]
+ *                 description: Unit of measurement (Kg or Ton)
  *               time:
  *                 type: string
  *                 description: Time in Indian 12-hour format (e.g., "10:30 AM", "03:45 PM")
@@ -396,10 +427,16 @@ export default router;
  *         mandi: "63b8e5b934e3e3f7d4a1c6f4"
  *         categoryPrices:
  *           - category: "Vegetables"
+ *             subCategory: "Tomatoes"
  *             price: 100
+ *             priceDifference: 10
+ *             unit: "Kg"
  *             time: "10:30 AM"
  *           - category: "Fruits"
+ *             subCategory: "Apples"
  *             price: 150
+ *             priceDifference: -5
+ *             unit: "Ton"
  *             time: "03:45 PM"
  *         createdAt: "2024-11-22T10:30:00Z"
  *         updatedAt: "2024-11-22T10:30:00Z"
