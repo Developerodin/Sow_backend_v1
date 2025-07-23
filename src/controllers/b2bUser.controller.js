@@ -10,6 +10,7 @@ import Mandi from '../models/Mandi.model.js';
 import axios from "axios";
 import generateToken from '../utils/jwt.js';
 import { uploadFileToS3, deleteFileFromS3 } from './common.controller.js';
+import { verifyPan } from '../services/truthscreen.service.js';
 
 
 const sendOtpSMS = async (mobileNumber, otp) => {
@@ -1680,6 +1681,149 @@ const getSubcategoryHistoryByTimeframe = async (req, res) => {
 
 
 
+// PAN Verification Functions
+const verifyPanKyc = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { panNumber } = req.body;
+
+    if (!panNumber) {
+      return res.status(400).json({ message: 'PAN number is required' });
+    }
+
+    // Find or create KYC entry for the user
+    let kyc = await B2BKYC.findOne({ userId });
+    if (!kyc) {
+      kyc = new B2BKYC({ userId });
+    }
+
+    // Verify PAN using the truthscreen service
+    const result = await verifyPan(panNumber);
+    console.log("PAN verification result:", result);
+
+    if (!result.valid) {
+      return res.status(400).json({
+        success: false,
+        message: `PAN verification failed: ${result.message || 'Invalid PAN number'}`,
+        data: result
+      });
+    }
+
+    // Update KYC with verified PAN data
+    kyc.panNumber = panNumber.toUpperCase();
+    kyc.panVerified = true;
+    kyc.panVerificationDate = new Date();
+    kyc.panKycData = result;
+    await kyc.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'PAN verified successfully',
+      data: {
+        panNumber: kyc.panNumber,
+        panVerified: kyc.panVerified,
+        panVerificationDate: kyc.panVerificationDate,
+        verificationData: result
+      }
+    });
+
+  } catch (error) {
+    console.error('PAN verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: `PAN verification failed: ${error.message}`
+    });
+  }
+};
+
+const getPanKycStatus = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const kyc = await B2BKYC.findOne({ userId });
+    if (!kyc) {
+      return res.status(404).json({
+        success: false,
+        message: 'KYC details not found for this user'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        panNumber: kyc.panNumber || null,
+        panVerified: kyc.panVerified || false,
+        panVerificationDate: kyc.panVerificationDate || null,
+        panKycData: kyc.panKycData || null
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching PAN KYC status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error'
+    });
+  }
+};
+
+const updatePanKyc = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { panNumber } = req.body;
+
+    if (!panNumber) {
+      return res.status(400).json({ message: 'PAN number is required' });
+    }
+
+    // Find KYC entry
+    let kyc = await B2BKYC.findOne({ userId });
+    if (!kyc) {
+      return res.status(404).json({
+        success: false,
+        message: 'KYC details not found for this user'
+      });
+    }
+
+    // Verify the new PAN number
+    const result = await verifyPan(panNumber);
+    console.log("PAN verification result for update:", result);
+
+    if (!result.valid) {
+      return res.status(400).json({
+        success: false,
+        message: `PAN verification failed: ${result.message || 'Invalid PAN number'}`,
+        data: result
+      });
+    }
+
+    // Update PAN data
+    kyc.panNumber = panNumber.toUpperCase();
+    kyc.panVerified = true;
+    kyc.panVerificationDate = new Date();
+    kyc.panKycData = result;
+    await kyc.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'PAN KYC updated successfully',
+      data: {
+        panNumber: kyc.panNumber,
+        panVerified: kyc.panVerified,
+        panVerificationDate: kyc.panVerificationDate,
+        verificationData: result
+      }
+    });
+
+  } catch (error) {
+    console.error('Error updating PAN KYC:', error);
+    res.status(500).json({
+      success: false,
+      message: `PAN KYC update failed: ${error.message}`
+    });
+  }
+};
+
 export {
   createB2BUser,
   getB2BUsers,
@@ -1735,4 +1879,7 @@ export {
   uploadAadharImages,
   updateAadharImages,
   getAadharImages,
+  verifyPanKyc,
+  getPanKycStatus,
+  updatePanKyc,
 };

@@ -1,5 +1,7 @@
 import MandiCategoryPrice from '../models/MandiRates.model.js';
 import Mandi from '../models/Mandi.model.js';
+import Notification from "../models/b2bNotification.js";
+import { sendNotificationToAllUsers } from "./pushNotifications.controller.js";
 
 
 // Save the entire array of categories with prices
@@ -9,6 +11,18 @@ const saveCategoryPrices = async (req, res) => {
     const newMandiCategoryPrice = new MandiCategoryPrice({ mandi, categoryPrices });
     await newMandiCategoryPrice.save();
     res.status(201).json(newMandiCategoryPrice);
+
+    // Push Notification logic
+    try {
+      await sendNotificationToAllUsers(
+        "New Rates available",
+        "Check out the latest mandi rates.",
+        { type: "mandiRatesUpdate" }
+      );
+    } catch (notifyErr) {
+      console.error("Push notification error:", notifyErr);
+    }
+
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -137,6 +151,17 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
     const bulkWriteOperations = [...bulkOperations, ...upsertOperations];
 
     await MandiCategoryPrice.bulkWrite(bulkWriteOperations);
+
+    // Push Notification logic
+    try {
+      await sendNotificationToAllUsers(
+        "New Rates available",
+        "Check out the latest mandi rates.",
+        { type: "mandiRatesUpdate" }
+      );
+    } catch (notifyErr) {
+      console.error("Push notification error:", notifyErr);
+    }
 
     res.status(200).json({ message: 'Mandi prices updated successfully.' });
   } catch (error) {

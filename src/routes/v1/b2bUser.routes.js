@@ -56,7 +56,10 @@ import {
   updateAadharBackImage,
   uploadAadharImages,
   updateAadharImages,
-  getAadharImages
+  getAadharImages,
+  verifyPanKyc,
+  getPanKycStatus,
+  updatePanKyc
 } from '../../controllers/b2bUser.controller.js';
 
 const b2bRoute = express.Router();
@@ -131,6 +134,11 @@ b2bRoute.put('/kycAadharBackImage/:kycId', updateAadharBackImage);
 b2bRoute.post('/kycAadharImages', uploadAadharImages);
 b2bRoute.get('/kycAadharImages/:kycId', getAadharImages);
 b2bRoute.put('/kycAadharImages/:kycId', updateAadharImages);
+
+// PAN Verification routes
+b2bRoute.post('/:userId/verify-pan', verifyPanKyc);
+b2bRoute.get('/:userId/pan-status', getPanKycStatus);
+b2bRoute.put('/:userId/update-pan', updatePanKyc);
 // Delete a B2B KYC details
 b2bRoute.delete('/kyc/:id', deleteB2BKycDetails);
 

@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import validator from 'validator';
 
 const kycSchema = mongoose.Schema(
   {
@@ -12,10 +13,19 @@ const kycSchema = mongoose.Schema(
       required: false,
       trim: true,
       validate(value) {
-        if (!/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(value)) {
-          throw new Error('Invalid PAN number format');
+        if (value && !validator.matches(value, /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/)) {
+          throw new Error('Invalid PAN number');
         }
       },
+    },
+    panVerified: {
+      type: Boolean,
+      default: false,
+    },
+    panVerificationDate: Date,
+    panKycData: {
+      type: Object, // Store the complete verification response
+      required: false,
     },
     gstinNumber: {
       type: String,
