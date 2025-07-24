@@ -11,6 +11,7 @@ import axios from "axios";
 import generateToken from '../utils/jwt.js';
 import { uploadFileToS3, deleteFileFromS3 } from './common.controller.js';
 import { verifyPan } from '../services/truthscreen.service.js';
+import { sendNotificationByUserId } from './pushNotifications.controller.js';
 
 
 const sendOtpSMS = async (mobileNumber, otp) => {
@@ -1456,6 +1457,31 @@ const updateKycDetailsByUserId = async (req, res) => {
     if (!updatedKyc) {
       return res.status(404).json({ success: false, message: 'KYC details not found for this user' });
     }
+    const getStatusMessage = (status) => {
+      switch (status) {
+        case 'approved':
+          return {
+            title: '🎉 KYC Approved!',
+            body: 'Congratulations! Your KYC verification has been approved. You can now access all B2B features and start trading.'
+          };
+        case 'rejected':
+          return {
+            title: '⚠️ KYC Update Required',
+            body: 'Your KYC verification requires attention. Please review the feedback and resubmit your documents for approval.'
+          };
+        case 'pending':
+        default:
+          return {
+            title: '📋 KYC Under Review',
+            body: 'Your KYC documents have been submitted and are currently under review. We\'ll notify you once the verification is complete.'
+          };
+      }
+    };
+
+    const statusMessage = getStatusMessage(updatedKyc.status);
+    const data = { status: updatedKyc.status };
+
+    await sendNotificationByUserId(updatedKyc.userId, statusMessage.title, statusMessage.body, data);
 
     res.status(200).json({ 
       success: true, 
@@ -1508,6 +1534,34 @@ const changeKYCStatus = async (req, res) => {
     }
 
     const kyc = await B2BKYC.findById(kycId);
+   
+    const getStatusMessage = (status) => {
+      switch (status) {
+        case 'approved':
+          return {
+            title: '🎉 KYC Approved!',
+            body: 'Congratulations! Your KYC verification has been approved. You can now access all B2B features and start trading.'
+          };
+        case 'rejected':
+          return {
+            title: '⚠️ KYC Update Required',
+            body: 'Your KYC verification requires attention. Please review the feedback and resubmit your documents for approval.'
+          };
+        case 'pending':
+        default:
+          return {
+            title: '📋 KYC Under Review',
+            body: 'Your KYC documents have been submitted and are currently under review. We\'ll notify you once the verification is complete.'
+          };
+      }
+    };
+
+    const statusMessage = getStatusMessage(status);
+    const data = { status: status };
+
+    // Send notification to the user who created the order
+   
+    await sendNotificationByUserId(kyc.userId, statusMessage.title, statusMessage.body, data);
     if (!kyc) return res.status(404).json({ message: 'KYC entry not found' });
 
     kyc.status = status;
