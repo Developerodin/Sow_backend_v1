@@ -1768,7 +1768,16 @@ const verifyPanKyc = async (req, res) => {
     kyc.panVerified = true;
     kyc.panVerificationDate = new Date();
     kyc.panKycData = result;
+    
+    console.log('💾 Saving KYC data:', {
+      userId: kyc.userId,
+      panNumber: kyc.panNumber,
+      panVerified: kyc.panVerified,
+      hasGstin: !!kyc.gstinNumber
+    });
+    
     await kyc.save();
+    console.log('✅ KYC data saved successfully');
 
     res.status(200).json({
       success: true,
@@ -1783,6 +1792,12 @@ const verifyPanKyc = async (req, res) => {
 
   } catch (error) {
     console.error('PAN verification error:', error);
+    
+    // Log specific validation errors
+    if (error.name === 'ValidationError') {
+      console.error('Validation errors:', error.errors);
+    }
+    
     res.status(500).json({
       success: false,
       message: `PAN verification failed: ${error.message}`
