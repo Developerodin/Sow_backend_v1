@@ -17,10 +17,10 @@ const router = express.Router();
 // Routes
 router.post('/', saveCategoryPrices);
 router.post('/mandi-prices', saveOrUpdateMandiCategoryPrices);
-router.patch('/:mandiId/:category', updateCategoryPrice);
-router.delete('/:mandiId/:category', deleteCategoryPrice);
+router.patch('/:mandiId/:category/:subCategory', updateCategoryPrice);
+router.delete('/:mandiId/:category/:subCategory', deleteCategoryPrice);
 router.get('/', getAllData);
-router.get('/difference/:mandiId/:category', getPriceDifference);
+router.get('/difference/:mandiId/:category/:subCategory', getPriceDifference);
 router.get('/history/mandi/:mandiId', getMandiHistory);
 router.get('/history/category/:mandiId/:category', getCategoryHistory);
 router.get('/history/timeframe/:mandiId/:category/:timeframe', getHistoryByTimeframe);
@@ -125,10 +125,10 @@ export default router;
 
 /**
  * @swagger
- * /mandiRates/{mandiId}/{category}:
+ * /mandiRates/{mandiId}/{category}/{subCategory}:
  *   patch:
- *     summary: Update category price
- *     description: Update the price of a category for a specific Mandi.
+ *     summary: Update subcategory price
+ *     description: Update the price of a specific subcategory for a specific Mandi.
  *     tags: [MandiRates]
  *     parameters:
  *       - in: path
@@ -143,6 +143,12 @@ export default router;
  *         schema:
  *           type: string
  *         description: Category name
+ *       - in: path
+ *         name: subCategory
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Subcategory name
  *     requestBody:
  *       required: true
  *       content:
@@ -179,8 +185,8 @@ export default router;
  *         $ref: '#/components/responses/ServerError'
  *
  *   delete:
- *     summary: Delete category price
- *     description: Delete the price of a category for a specific Mandi.
+ *     summary: Delete subcategory price
+ *     description: Delete the price of a specific subcategory for a specific Mandi.
  *     tags: [MandiRates]
  *     parameters:
  *       - in: path
@@ -195,9 +201,15 @@ export default router;
  *         schema:
  *           type: string
  *         description: Category name
+ *       - in: path
+ *         name: subCategory
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Subcategory name
  *     responses:
  *       "200":
- *         description: Category price deleted successfully
+ *         description: Subcategory price deleted successfully
  *       "404":
  *         $ref: '#/components/responses/NotFound'
  *       "500":
@@ -206,10 +218,10 @@ export default router;
 
 /**
  * @swagger
- * /mandiRates/difference/{mandiId}/{category}:
+ * /mandiRates/difference/{mandiId}/{category}/{subCategory}:
  *   get:
  *     summary: Get price difference
- *     description: Get the price difference for a category in a specific Mandi.
+ *     description: Get the price difference for a specific subcategory in a specific Mandi.
  *     tags: [MandiRates]
  *     parameters:
  *       - in: path
@@ -224,6 +236,12 @@ export default router;
  *         schema:
  *           type: string
  *         description: Category name
+ *       - in: path
+ *         name: subCategory
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Subcategory name
  *     responses:
  *       "200":
  *         description: Price difference retrieved successfully
