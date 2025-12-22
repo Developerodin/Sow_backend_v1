@@ -20,6 +20,7 @@ import commonRoute from '../common.routes.js';
 import PostRoute from './post.routes.js';
 import AdminRouter from './Admin.Router.js';
 import planRouter from './Plans.Router.js';
+import marketRateParserRoute from './marketRateParser.routes.js';
 const router = express.Router();
 
 const defaultRoutes = [
@@ -102,6 +103,10 @@ const defaultRoutes = [
   {
     path : '/files',
     route : commonRoute,
+  },
+  {
+    path: '/market-rates',
+    route: marketRateParserRoute,
   },
 ];
 

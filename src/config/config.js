@@ -33,6 +33,10 @@ const envVarsSchema = Joi.object()
     SMTP_USERNAME: Joi.string().description('username for email server'),
     SMTP_PASSWORD: Joi.string().description('password for email server'),
     EMAIL_FROM: Joi.string().description('the from field in the emails sent by the app'),
+    OPENAI_API_KEY: Joi.string().description('OpenAI API key for AI agent'),
+    OPENAI_MODEL: Joi.string().default('gpt-4o-mini').description('OpenAI model for parsing'),
+    OPENAI_EMBEDDING_MODEL: Joi.string().default('text-embedding-3-small').description('OpenAI model for embeddings'),
+    VECTOR_SIMILARITY_THRESHOLD: Joi.number().default(0.85).description('Minimum similarity threshold for vector matching'),
   })
   .unknown();
 
@@ -71,6 +75,12 @@ const config = {
     },
     from: envVars.EMAIL_FROM,
   },
+  openai: {
+    apiKey: envVars.OPENAI_API_KEY,
+    model: envVars.OPENAI_MODEL || 'gpt-4o-mini',
+    embeddingModel: envVars.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
+    similarityThreshold: parseFloat(envVars.VECTOR_SIMILARITY_THRESHOLD) || 0.85,
+  },
 };
 
 export default config;
@@ -82,4 +92,11 @@ export const aws = {
   s3: {
     bucket: process.env.AWS_BUCKET_NAME,
   },
+};
+
+export const openai = {
+  apiKey: process.env.OPENAI_API_KEY,
+  model: process.env.OPENAI_MODEL || 'gpt-4o-mini',
+  embeddingModel: process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
+  similarityThreshold: parseFloat(process.env.VECTOR_SIMILARITY_THRESHOLD) || 0.85,
 };
