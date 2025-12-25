@@ -19,17 +19,17 @@ const parseMarketRateMessage = catchAsync(async (req, res) => {
 
   // Build success message
   let messageText = '';
-  const createdMandisCount = result.created?.mandis?.length || 0;
+  const matchedMandisCount = result.created?.mandis?.length || 0;
   
   if (result.updated.mandiCategoryPrices > 0) {
-    messageText = 'Market rates added successfully';
-    if (createdMandisCount > 0) {
-      messageText += `. Created ${createdMandisCount} new mandi${createdMandisCount === 1 ? '' : 's'}`;
+    messageText = `Market rates added successfully. ${result.updated.mandiCategoryPrices} price${result.updated.mandiCategoryPrices === 1 ? '' : 's'} added`;
+    if (matchedMandisCount > 0) {
+      messageText += `. Matched ${matchedMandisCount} mandi${matchedMandisCount === 1 ? '' : 's'}`;
     }
   } else {
     messageText = 'Message parsed but no rates were added to database';
-    if (createdMandisCount > 0) {
-      messageText += `. Created ${createdMandisCount} new mandi${createdMandisCount === 1 ? '' : 's'}`;
+    if (result.warnings && result.warnings.length > 0) {
+      messageText += `. ${result.warnings.length} warning${result.warnings.length === 1 ? '' : 's'} generated`;
     }
   }
 

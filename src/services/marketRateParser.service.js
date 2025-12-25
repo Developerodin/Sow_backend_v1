@@ -141,12 +141,17 @@ const matchSubCategory = async (subCategoryName, category) => {
  * @param {boolean} autoCreate - Whether to auto-create if not found
  * @returns {Promise<Object|null>} Matched or created mandi with ObjectId or null
  */
-const matchMandi = async (mandiName, autoCreate = true) => {
+const matchMandi = async (mandiName, autoCreate = false) => {
   if (!mandiName) return null;
 
-  // Remove "Mandi" prefix if present and clean
-  let cleanedName = mandiName.replace(/^Mandi\s+/i, '').trim();
+  // Filter out invalid mandi names
+  const invalidNames = ['unknown', 'null', 'none', ''];
+  const cleanedName = mandiName.replace(/^Mandi\s+/i, '').trim();
   
+  if (invalidNames.includes(cleanedName.toLowerCase())) {
+    return null;
+  }
+
   // Try matching with original name first
   let match = await findBestSingleMatch(cleanedName, 'mandi');
   
@@ -183,87 +188,18 @@ const matchMandi = async (mandiName, autoCreate = true) => {
   }
   
   if (match && match.originalId) {
-    return {
-      _id: match.originalId._id || match.originalId,
-      name: match.originalId.mandiname || match.originalId.city || cleanedName,
-      similarity: match.similarity || 0.9, // Default high similarity for direct matches
-    };
-  }
-
-  // Auto-create mandi if not found and autoCreate is true
-  if (autoCreate) {
-    try {
-      // Check if mandi already exists (case-insensitive, by city)
-      const existingMandi = await Mandi.findOne({
-        $or: [
-          { city: { $regex: new RegExp(`^${cleanedName}$`, 'i') } },
-          { mandiname: { $regex: new RegExp(`^${cleanedName}$`, 'i') } }
-        ]
-      });
-
-      if (existingMandi) {
-        // Generate embedding for existing mandi
-        await storeEmbedding({
-          type: 'mandi',
-          originalId: existingMandi._id,
-          text: existingMandi.mandiname || existingMandi.city,
-          aliases: [cleanedName, `Mandi ${cleanedName}`],
-        });
-        return {
-          _id: existingMandi._id,
-          name: existingMandi.mandiname || existingMandi.city,
-          similarity: 1.0,
-          wasCreated: false,
-        };
-      }
-
-      // Create new mandi (use cleanedName as city, state will be null)
-      const newMandi = await Mandi.create({
-        mandiname: cleanedName,
-        city: cleanedName,
-        state: 'Unknown', // Will need to be updated manually
-        categories: [], // Empty categories array
-      });
-
-      // Generate and store embedding
-      await storeEmbedding({
-        type: 'mandi',
-        originalId: newMandi._id,
-        text: newMandi.mandiname || newMandi.city,
-        aliases: [cleanedName, `Mandi ${cleanedName}`],
-      });
-
+    const mandi = await Mandi.findById(match.originalId._id || match.originalId);
+    // Don't return mandis with Unknown state or null city
+    if (mandi && mandi.state && mandi.state.toLowerCase() !== 'unknown' && mandi.city) {
       return {
-        _id: newMandi._id,
-        name: newMandi.mandiname || newMandi.city,
-        similarity: 1.0,
-        wasCreated: true,
+        _id: mandi._id,
+        name: mandi.mandiname || mandi.city,
+        similarity: match.similarity || 0.9,
       };
-    } catch (error) {
-      // Handle errors (might be duplicate)
-      const existingMandi = await Mandi.findOne({
-        $or: [
-          { city: { $regex: new RegExp(`^${cleanedName}$`, 'i') } },
-          { mandiname: { $regex: new RegExp(`^${cleanedName}$`, 'i') } }
-        ]
-      });
-      if (existingMandi) {
-        await storeEmbedding({
-          type: 'mandi',
-          originalId: existingMandi._id,
-          text: existingMandi.mandiname || existingMandi.city,
-        });
-        return {
-          _id: existingMandi._id,
-          name: existingMandi.mandiname || existingMandi.city,
-          similarity: 1.0,
-          wasCreated: false,
-        };
-      }
-      throw error;
     }
   }
 
+  // Don't auto-create mandis with unknown state - skip them instead
   return null;
 };
 
@@ -281,6 +217,12 @@ const matchEntities = async (parsedData) => {
   };
 
   for (const rate of parsedData.rates) {
+    // Skip if category is null, unknown, or empty
+    if (!rate.category || rate.category.toLowerCase() === 'null' || rate.category.toLowerCase() === 'unknown' || rate.category.trim() === '') {
+      warnings.push(`Skipping rate with invalid category: '${rate.category}'`);
+      continue;
+    }
+
     // Match category using vector data to understand relationships
     const category = await matchCategory(rate.category);
     if (!category) {
@@ -292,17 +234,24 @@ const matchEntities = async (parsedData) => {
       warnings.push(`Category '${rate.category}' matched with low confidence (${category.similarity.toFixed(2)})`);
     }
 
-    // Match subcategory (optional)
+    // Match subcategory - if items are listed under a category, they should be subcategories
     let subCategory = null;
     
     // If category was matched via subcategory, use that subcategory
     if (category.matchedSubCategory) {
       subCategory = category.matchedSubCategory;
     } else if (rate.subCategory) {
-      // Try to match the provided subcategory
+      // Skip if subcategory is null, unknown, or empty
+      if (rate.subCategory.toLowerCase() === 'null' || rate.subCategory.toLowerCase() === 'unknown' || rate.subCategory.trim() === '') {
+        warnings.push(`Skipping rate with invalid subcategory: '${rate.subCategory}'`);
+        continue;
+      }
+      
+      // Try to match the provided subcategory using vector embeddings
       subCategory = await matchSubCategory(rate.subCategory, category);
       if (!subCategory && rate.subCategory) {
         warnings.push(`Could not match subcategory: '${rate.subCategory}' under category '${category.name}'`);
+        // Don't skip - allow saving with null subcategory if it's truly not found
       }
     } else if (category.isFromSubCategory) {
       // If category was matched via subcategory but no matchedSubCategory object, find it
@@ -322,16 +271,20 @@ const matchEntities = async (parsedData) => {
     // Process mandi prices
     const matchedMandiPrices = [];
     for (const mandiPrice of rate.mandiPrices || []) {
-      const mandi = await matchMandi(mandiPrice.mandi, true);
-      
-      if (!mandi) {
-        warnings.push(`Could not match or create mandi: '${mandiPrice.mandi}'`);
+      // Skip if mandi is null, unknown, or empty
+      if (!mandiPrice.mandi || mandiPrice.mandi.toLowerCase() === 'null' || mandiPrice.mandi.toLowerCase() === 'unknown' || mandiPrice.mandi.trim() === '') {
+        warnings.push(`Skipping price with invalid mandi: '${mandiPrice.mandi}'`);
         continue;
       }
 
-      // Note: Mandis can still be auto-created if needed, but categories/subcategories cannot
+      const mandi = await matchMandi(mandiPrice.mandi, false); // Don't auto-create
+      
+      if (!mandi) {
+        warnings.push(`Could not match mandi: '${mandiPrice.mandi}' (skipped to avoid unknown state)`);
+        continue;
+      }
 
-      if (mandi.similarity && mandi.similarity < 0.9 && !mandi.wasCreated) {
+      if (mandi.similarity && mandi.similarity < 0.9) {
         warnings.push(`Mandi '${mandiPrice.mandi}' matched with low confidence (${mandi.similarity.toFixed(2)})`);
       }
 
@@ -344,6 +297,7 @@ const matchEntities = async (parsedData) => {
       });
     }
 
+    // Only add rate if it has valid mandi prices
     if (matchedMandiPrices.length > 0) {
       matchedRates.push({
         category: category.name,
@@ -369,13 +323,24 @@ const matchEntities = async (parsedData) => {
  * @param {Object} matchedData - Matched data from matchEntities
  * @param {string} date - Date string (YYYY-MM-DD)
  * @param {string} time - Time string (HH:MM AM/PM)
- * @returns {Promise<Array>} Updated MandiCategoryPrice documents
+ * @returns {Promise<Object>} Updated documents count
  */
 const updateDatabase = async (matchedData, date, time) => {
   const updatedDocuments = [];
+  let mandiCategoryPricesCount = 0;
 
   for (const rate of matchedData.matchedRates) {
+    // Skip if category is null or unknown
+    if (!rate.category || rate.category.toLowerCase() === 'null' || rate.category.toLowerCase() === 'unknown') {
+      continue;
+    }
+
     for (const mandiPrice of rate.mandiPrices) {
+      // Skip if mandi is invalid
+      if (!mandiPrice.mandi) {
+        continue;
+      }
+
       // Find or create MandiCategoryPrice document
       let mandiCategoryPrice = await MandiCategoryPrice.findOne({
         mandi: mandiPrice.mandi,
@@ -399,12 +364,20 @@ const updateDatabase = async (matchedData, date, time) => {
           cp.time === time
       );
 
+      // Only save subcategory if it's not null, unknown, or empty
+      const subCategoryValue = (rate.subCategory && 
+                                rate.subCategory.toLowerCase() !== 'null' && 
+                                rate.subCategory.toLowerCase() !== 'unknown' && 
+                                rate.subCategory.trim() !== '') 
+                                ? rate.subCategory 
+                                : null;
+
       const categoryPriceData = {
         category: rate.category,
-        subCategory: rate.subCategory || null,
+        subCategory: subCategoryValue,
         price: mandiPrice.price,
-        priceDifference: mandiPrice.priceDifference,
-        unit: mandiPrice.unit,
+        priceDifference: mandiPrice.priceDifference || null,
+        unit: mandiPrice.unit || 'Ton',
         date: dateObj,
         time: time,
       };
@@ -415,14 +388,20 @@ const updateDatabase = async (matchedData, date, time) => {
       } else {
         // Add new price
         mandiCategoryPrice.categoryPrices.push(categoryPriceData);
+        mandiCategoryPricesCount++;
       }
 
       await mandiCategoryPrice.save();
-      updatedDocuments.push(mandiCategoryPrice);
+      if (!updatedDocuments.find(doc => doc._id.toString() === mandiCategoryPrice._id.toString())) {
+        updatedDocuments.push(mandiCategoryPrice);
+      }
     }
   }
 
-  return updatedDocuments;
+  return {
+    documents: updatedDocuments,
+    count: mandiCategoryPricesCount,
+  };
 };
 
 /**
@@ -438,24 +417,41 @@ const parseAndUpdate = async (message) => {
   const matchedData = await matchEntities(parsedData);
 
   // Step 3: Update database
-  const updatedDocuments = await updateDatabase(
+  const updateResult = await updateDatabase(
     matchedData,
     parsedData.date,
     parsedData.time
   );
 
+  // Extract unique matched mandis (we don't create new ones anymore)
+  const matchedMandiIds = new Set();
+  const matchedMandis = [];
+  for (const rate of matchedData.matchedRates) {
+    for (const mandiPrice of rate.mandiPrices) {
+      if (!matchedMandiIds.has(mandiPrice.mandi.toString())) {
+        matchedMandiIds.add(mandiPrice.mandi.toString());
+        matchedMandis.push({
+          _id: mandiPrice.mandi,
+          name: mandiPrice.mandiName,
+        });
+      }
+    }
+  }
+
   return {
     parsed: parsedData,
     matched: {
-      categories: matchedData.matchedRates.map((r) => r.category),
-      subCategories: matchedData.matchedRates
+      categories: [...new Set(matchedData.matchedRates.map((r) => r.category))],
+      subCategories: [...new Set(matchedData.matchedRates
         .map((r) => r.subCategory)
-        .filter((sc) => sc !== null),
+        .filter((sc) => sc !== null && sc !== 'null' && sc !== 'unknown'))],
       mandis: [...new Set(matchedData.matchedRates.flatMap((r) => r.mandiPrices.map((mp) => mp.mandiName)))],
     },
-    created: matchedData.createdEntities,
+    created: {
+      mandis: matchedMandis, // These are matched mandis, not newly created
+    },
     updated: {
-      mandiCategoryPrices: updatedDocuments.length,
+      mandiCategoryPrices: updateResult.count,
     },
     warnings: matchedData.warnings,
   };
