@@ -1,7 +1,11 @@
 import OpenAI from 'openai';
 import config from '../config/config.js';
 import VectorEmbedding from '../models/VectorEmbedding.model.js';
+import SubCategory from '../models/subCategory.modal.js';
 import { cleanForEmbedding } from '../utils/textCleaner.js';
+
+/** Lower than global threshold: compare only within one category's subcategories. */
+const SUBCATEGORY_IN_CATEGORY_MIN_SIMILARITY = 0.68;
 
 const openai = new OpenAI({
   apiKey: config.openai.apiKey,
@@ -160,6 +164,60 @@ const findBestSingleMatch = async (searchText, type) => {
 };
 
 /**
+ * Best subcategory match restricted to one category (avoids wrong-category global winners
+ * and uses a slightly lower similarity floor than global search).
+ * @param {string} searchText
+ * @param {import('mongoose').Types.ObjectId} categoryId
+ * @returns {Promise<{ _id: import('mongoose').Types.ObjectId; name: string; similarity: number } | null>}
+ */
+const findBestSubcategoryMatchForCategory = async (searchText, categoryId) => {
+  if (!searchText?.trim() || !categoryId) {
+    return null;
+  }
+
+  const subCats = await SubCategory.find({ categoryId }).select('_id').lean();
+  if (!subCats.length) {
+    return null;
+  }
+
+  const idList = subCats.map((s) => s._id);
+  const embeddings = await VectorEmbedding.find({
+    type: 'subcategory',
+    originalId: { $in: idList },
+  }).lean();
+
+  if (!embeddings.length) {
+    return null;
+  }
+
+  const searchEmbedding = await generateEmbedding(searchText);
+  let best = null;
+
+  for (const emb of embeddings) {
+    if (!emb.embedding?.length) continue;
+    const similarity = cosineSimilarity(searchEmbedding, emb.embedding);
+    if (!best || similarity > best.similarity) {
+      best = { similarity, originalId: emb.originalId };
+    }
+  }
+
+  if (!best || best.similarity < SUBCATEGORY_IN_CATEGORY_MIN_SIMILARITY) {
+    return null;
+  }
+
+  const sub = await SubCategory.findById(best.originalId);
+  if (!sub || sub.categoryId.toString() !== categoryId.toString()) {
+    return null;
+  }
+
+  return {
+    _id: sub._id,
+    name: sub.name,
+    similarity: best.similarity,
+  };
+};
+
+/**
  * Batch generate embeddings for multiple texts
  * @param {string[]} texts - Array of texts to generate embeddings for
  * @returns {Promise<number[][]>} Array of embedding vectors
@@ -189,6 +247,7 @@ export {
   storeEmbedding,
   findBestMatch,
   findBestSingleMatch,
+  findBestSubcategoryMatchForCategory,
   batchGenerateEmbeddings,
 };
 

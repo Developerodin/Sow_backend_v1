@@ -37,6 +37,10 @@ const envVarsSchema = Joi.object()
     OPENAI_MODEL: Joi.string().default('gpt-4o-mini').description('OpenAI model for parsing'),
     OPENAI_EMBEDDING_MODEL: Joi.string().default('text-embedding-3-small').description('OpenAI model for embeddings'),
     VECTOR_SIMILARITY_THRESHOLD: Joi.number().default(0.85).description('Minimum similarity threshold for vector matching'),
+    MARKET_RATE_PARSE_ASYNC_DEFAULT: Joi.string()
+      .valid('true', 'false')
+      .optional()
+      .description('If true, POST /market-rates/parse returns 202 immediately and processes in background (avoids gateway 504)'),
   })
   .unknown();
 
@@ -80,6 +84,12 @@ const config = {
     model: envVars.OPENAI_MODEL || 'gpt-4o-mini',
     embeddingModel: envVars.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small',
     similarityThreshold: parseFloat(envVars.VECTOR_SIMILARITY_THRESHOLD) || 0.85,
+  },
+  marketRateParse: {
+    asyncDefault:
+      envVars.MARKET_RATE_PARSE_ASYNC_DEFAULT !== undefined
+        ? envVars.MARKET_RATE_PARSE_ASYNC_DEFAULT === 'true'
+        : envVars.NODE_ENV === 'production',
   },
 };
 

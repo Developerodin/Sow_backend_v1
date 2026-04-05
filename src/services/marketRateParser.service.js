@@ -1,11 +1,14 @@
 import httpStatus from 'http-status';
 import ApiError from '../utils/ApiError.js';
 import { parseMessage } from './aiAgent.service.js';
-import { findBestSingleMatch, storeEmbedding } from './vectorEmbedding.service.js';
+import { findBestSingleMatch, findBestSubcategoryMatchForCategory } from './vectorEmbedding.service.js';
+import { namesMatchLoosely } from '../utils/textSimilarity.js';
 import MandiCategoryPrice from '../models/MandiRates.model.js';
 import Mandi from '../models/Mandi.model.js';
 import Category from '../models/category.modal.js';
 import SubCategory from '../models/subCategory.modal.js';
+
+const LOG_PREFIX = '[marketRateParser]';
 
 /**
  * Match extracted category name against vector embeddings
@@ -84,13 +87,42 @@ const matchCategory = async (categoryName) => {
  * @returns {Promise<Object|null>} Matched subcategory with ObjectId or null
  */
 const matchSubCategory = async (subCategoryName, category) => {
-  if (!subCategoryName || !category) return null;
+  if (!subCategoryName || !category) {
+    console.log(LOG_PREFIX, 'matchSubCategory: skip — missing subCategoryName or category', {
+      subCategoryName,
+      categoryId: category?._id,
+    });
+    return null;
+  }
 
-  // Strategy 1: Try vector matching first
+  const categorySubCategories = await SubCategory.find({ categoryId: category._id });
+
+  // 1) String-first: case, spacing, word order, typos — no embeddings required
+  for (const subCat of categorySubCategories) {
+    if (namesMatchLoosely(subCategoryName, subCat.name)) {
+      return {
+        _id: subCat._id,
+        name: subCat.name,
+        similarity: 0.96,
+        isFuzzyMatch: true,
+      };
+    }
+  }
+
+  // 2) Embeddings only among this category's subcategories (avoids wrong-category global hits)
+  const scoped = await findBestSubcategoryMatchForCategory(subCategoryName, category._id);
+  if (scoped) {
+    return {
+      _id: scoped._id,
+      name: scoped.name,
+      similarity: scoped.similarity,
+    };
+  }
+
+  // 3) Global vector match — keep only if it belongs to this category
   const match = await findBestSingleMatch(subCategoryName, 'subcategory');
-  
+
   if (match && match.originalId) {
-    // Verify subcategory belongs to the matched category
     const subCategory = await SubCategory.findById(match.originalId._id || match.originalId);
     if (subCategory && category && subCategory.categoryId.toString() === category._id.toString()) {
       return {
@@ -99,39 +131,26 @@ const matchSubCategory = async (subCategoryName, category) => {
         similarity: match.similarity,
       };
     }
-  }
-
-  // Strategy 2: Try fuzzy matching within the category
-  // Search all subcategories of this category
-  const categorySubCategories = await SubCategory.find({ categoryId: category._id });
-  const searchNameLower = subCategoryName.toLowerCase().trim();
-  
-  for (const subCat of categorySubCategories) {
-    const subCatNameLower = (subCat.name || '').toLowerCase().trim();
-    
-    // Check if names match or contain each other
-    if (subCatNameLower === searchNameLower ||
-        subCatNameLower.includes(searchNameLower) || 
-        searchNameLower.includes(subCatNameLower) ||
-        searchNameLower.replace(/\s+/g, '') === subCatNameLower.replace(/\s+/g, '')) {
-      // Found a potential match, verify with vector matching
-      const embeddingMatch = await findBestSingleMatch(subCat.name, 'subcategory');
-      if (embeddingMatch && embeddingMatch.originalId) {
-        return {
-          _id: subCat._id,
-          name: subCat.name,
-          similarity: embeddingMatch.similarity || 0.85,
-          isFuzzyMatch: true,
-        };
-      }
+    if (subCategory) {
+      console.log(LOG_PREFIX, 'matchSubCategory: vector hit but wrong parent category', {
+        parsedSubCategory: subCategoryName,
+        matchedSubCatName: subCategory.name,
+        matchedSubCatCategoryId: subCategory.categoryId?.toString(),
+        expectedCategoryId: category._id?.toString(),
+        similarity: match.similarity,
+      });
     }
   }
 
-  // Strategy 3: If category was matched via subcategory, use that subcategory
   if (category.matchedSubCategory) {
     return category.matchedSubCategory;
   }
 
+  console.log(LOG_PREFIX, 'matchSubCategory: unresolved after fuzzy + strategies', {
+    subCategoryName,
+    categoryName: category.name,
+    categoryId: category._id?.toString(),
+  });
   return null;
 };
 
@@ -216,10 +235,18 @@ const matchEntities = async (parsedData) => {
     subCategories: [],
   };
 
-  for (const rate of parsedData.rates) {
+  for (let idx = 0; idx < parsedData.rates.length; idx++) {
+    const rate = parsedData.rates[idx];
+    console.log(LOG_PREFIX, `rate[${idx}] from AI`, {
+      category: rate.category,
+      subCategory: rate.subCategory,
+      mandiPricesCount: (rate.mandiPrices || []).length,
+    });
+
     // Skip if category is null, unknown, or empty
     if (!rate.category || rate.category.toLowerCase() === 'null' || rate.category.toLowerCase() === 'unknown' || rate.category.trim() === '') {
       warnings.push(`Skipping rate with invalid category: '${rate.category}'`);
+      console.log(LOG_PREFIX, `rate[${idx}] skipped: invalid category`);
       continue;
     }
 
@@ -227,8 +254,17 @@ const matchEntities = async (parsedData) => {
     const category = await matchCategory(rate.category);
     if (!category) {
       warnings.push(`Could not match category: '${rate.category}'`);
+      console.log(LOG_PREFIX, `rate[${idx}] skipped: category not matched`, { rawCategory: rate.category });
       continue;
     }
+
+    console.log(LOG_PREFIX, `rate[${idx}] matched category`, {
+      rawCategory: rate.category,
+      resolvedName: category.name,
+      categoryId: category._id?.toString(),
+      isFromSubCategory: !!category.isFromSubCategory,
+      matchedSubCategory: category.matchedSubCategory || null,
+    });
 
     if (category.similarity && category.similarity < 0.9) {
       warnings.push(`Category '${rate.category}' matched with low confidence (${category.similarity.toFixed(2)})`);
@@ -240,18 +276,26 @@ const matchEntities = async (parsedData) => {
     // If category was matched via subcategory, use that subcategory
     if (category.matchedSubCategory) {
       subCategory = category.matchedSubCategory;
+      console.log(LOG_PREFIX, `rate[${idx}] subCategory from category.matchedSubCategory`, {
+        name: subCategory?.name,
+        _id: subCategory?._id?.toString?.() || subCategory?._id,
+      });
     } else if (rate.subCategory) {
       // Skip if subcategory is null, unknown, or empty
       if (rate.subCategory.toLowerCase() === 'null' || rate.subCategory.toLowerCase() === 'unknown' || rate.subCategory.trim() === '') {
         warnings.push(`Skipping rate with invalid subcategory: '${rate.subCategory}'`);
+        console.log(LOG_PREFIX, `rate[${idx}] skipped: invalid subcategory string from AI`, { subCategory: rate.subCategory });
         continue;
       }
       
       // Try to match the provided subcategory using vector embeddings
       subCategory = await matchSubCategory(rate.subCategory, category);
-      if (!subCategory && rate.subCategory) {
-        warnings.push(`Could not match subcategory: '${rate.subCategory}' under category '${category.name}'`);
-        // Don't skip - allow saving with null subcategory if it's truly not found
+      if (subCategory) {
+        console.log(LOG_PREFIX, `rate[${idx}] subCategory matched`, {
+          aiSubCategory: rate.subCategory,
+          resolvedName: subCategory.name,
+          subCategoryId: subCategory._id?.toString?.() || subCategory._id,
+        });
       }
     } else if (category.isFromSubCategory) {
       // If category was matched via subcategory but no matchedSubCategory object, find it
@@ -266,6 +310,18 @@ const matchEntities = async (parsedData) => {
           };
         }
       }
+    }
+
+    if (!subCategory) {
+      warnings.push(
+        `Skipping rate (not saved): resolved subcategory is required for category '${category.name}'` +
+          (rate.subCategory ? ` (AI subcategory: '${rate.subCategory}' could not be matched)` : ` (no subcategory in parsed data)`)
+      );
+      console.log(LOG_PREFIX, `rate[${idx}] NOT SAVED: subCategory required — null or unmatched`, {
+        category: category.name,
+        aiSubCategory: rate.subCategory,
+      });
+      continue;
     }
 
     // Process mandi prices
@@ -306,6 +362,12 @@ const matchEntities = async (parsedData) => {
         subCategoryId: subCategory ? subCategory._id : null,
         mandiPrices: matchedMandiPrices,
       });
+    } else {
+      console.log(LOG_PREFIX, `rate[${idx}] NOT SAVED: no mandi prices matched (all mandis skipped or invalid)`, {
+        category: category.name,
+        subCategory: subCategory ? subCategory.name : null,
+        rawMandiPrices: rate.mandiPrices,
+      });
     }
   }
 
@@ -329,9 +391,29 @@ const updateDatabase = async (matchedData, date, time) => {
   const updatedDocuments = [];
   let mandiCategoryPricesCount = 0;
 
+  console.log(LOG_PREFIX, 'updateDatabase', {
+    date,
+    time,
+    matchedRatesCount: matchedData.matchedRates?.length ?? 0,
+  });
+
   for (const rate of matchedData.matchedRates) {
     // Skip if category is null or unknown
     if (!rate.category || rate.category.toLowerCase() === 'null' || rate.category.toLowerCase() === 'unknown') {
+      continue;
+    }
+
+    const subCategoryValue = (rate.subCategory &&
+        rate.subCategory.toLowerCase() !== 'null' &&
+        rate.subCategory.toLowerCase() !== 'unknown' &&
+        rate.subCategory.trim() !== '')
+      ? rate.subCategory
+      : null;
+
+    if (!subCategoryValue) {
+      console.log(LOG_PREFIX, 'updateDatabase: skip — subCategory is required; will not persist null', {
+        category: rate.category,
+      });
       continue;
     }
 
@@ -358,19 +440,11 @@ const updateDatabase = async (matchedData, date, time) => {
       const existingPriceIndex = mandiCategoryPrice.categoryPrices.findIndex(
         (cp) =>
           cp.category === rate.category &&
-          cp.subCategory === (rate.subCategory || null) &&
+          cp.subCategory === subCategoryValue &&
           cp.date &&
           new Date(cp.date).toISOString().split('T')[0] === dateObj.toISOString().split('T')[0] &&
           cp.time === time
       );
-
-      // Only save subcategory if it's not null, unknown, or empty
-      const subCategoryValue = (rate.subCategory && 
-                                rate.subCategory.toLowerCase() !== 'null' && 
-                                rate.subCategory.toLowerCase() !== 'unknown' && 
-                                rate.subCategory.trim() !== '') 
-                                ? rate.subCategory 
-                                : null;
 
       const categoryPriceData = {
         category: rate.category,
@@ -385,10 +459,25 @@ const updateDatabase = async (matchedData, date, time) => {
       if (existingPriceIndex >= 0) {
         // Update existing price
         mandiCategoryPrice.categoryPrices[existingPriceIndex] = categoryPriceData;
+        console.log(LOG_PREFIX, 'updateDatabase: replaced existing row (same date/time/category/subCategory)', {
+          mandiId: mandiPrice.mandi?.toString?.(),
+          category: rate.category,
+          subCategory: subCategoryValue,
+          date,
+          time,
+        });
       } else {
         // Add new price
         mandiCategoryPrice.categoryPrices.push(categoryPriceData);
         mandiCategoryPricesCount++;
+        console.log(LOG_PREFIX, 'updateDatabase: appended new price row', {
+          mandiId: mandiPrice.mandi?.toString?.(),
+          category: rate.category,
+          subCategory: subCategoryValue,
+          price: mandiPrice.price,
+          date,
+          time,
+        });
       }
 
       await mandiCategoryPrice.save();
@@ -413,8 +502,26 @@ const parseAndUpdate = async (message) => {
   // Step 1: Parse message using AI agent
   const parsedData = await parseMessage(message);
 
+  console.log(LOG_PREFIX, 'parseMessage result', {
+    date: parsedData.date,
+    time: parsedData.time,
+    ratesCount: parsedData.rates?.length ?? 0,
+    rawRates: parsedData.rates?.map((r, i) => ({
+      i,
+      category: r.category,
+      subCategory: r.subCategory,
+      mandiPrices: (r.mandiPrices || []).map((mp) => ({ mandi: mp.mandi, price: mp.price })),
+    })),
+  });
+
   // Step 2: Match entities against vector embeddings
   const matchedData = await matchEntities(parsedData);
+
+  console.log(LOG_PREFIX, 'matchEntities summary', {
+    matchedRatesCount: matchedData.matchedRates.length,
+    warningsCount: matchedData.warnings.length,
+    warnings: matchedData.warnings,
+  });
 
   // Step 3: Update database
   const updateResult = await updateDatabase(
