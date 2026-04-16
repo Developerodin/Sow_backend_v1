@@ -4,6 +4,7 @@ import {
   updateCategoryPrice,
   deleteCategoryPrice,
   getAllData,
+  getLiveSummary,
   getPriceDifference,
   getMandiHistory,
   getCategoryHistory,
@@ -19,6 +20,8 @@ router.post('/', saveCategoryPrices);
 router.post('/mandi-prices', saveOrUpdateMandiCategoryPrices);
 router.patch('/:mandiId/:category/:subCategory', updateCategoryPrice);
 router.delete('/:mandiId/:category/:subCategory', deleteCategoryPrice);
+/** Live Rates home screen: filtered window + latest per mandi + states list (see controller for date rule). */
+router.get('/live-summary', getLiveSummary);
 router.get('/', getAllData);
 router.get('/difference/:mandiId/:category/:subCategory', getPriceDifference);
 router.get('/history/mandi/:mandiId', getMandiHistory);

@@ -274,51 +274,6 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
   }
 };
 
-
-
-
-
-// Get all data
-const getAllData = async (req, res) => {
-  try {
-    const data = await MandiCategoryPrice.find().populate('mandi');
-    // console.log("Raw Data Before Processing:", JSON.stringify(data, null, 2));
-    // Add priceDifference field for each categoryPrices entry using getPriceDifference2
-    const updatedData = await Promise.all(data.map(async (mandiCategoryPrice) => {
-      const updatedCategoryPrices = await Promise.all(mandiCategoryPrice.categoryPrices.map(async (categoryPrice) => {
-        const { category, subCategory } = categoryPrice;
-        
-        // Check if mandi exists before accessing its _id
-        if (!mandiCategoryPrice.mandi) {
-          return {
-            ...categoryPrice.toObject(), // Convert to plain object
-            priceDifference: {}, // Return empty object if no mandi
-          };
-        }
-        
-        // Call getPriceDifference2 to calculate the price difference
-        const priceDifferenceData = await getPriceDifference2(mandiCategoryPrice.mandi._id, category, subCategory) || {};
-        
-        // Replace the priceDifference field with the result from getPriceDifference2
-        return {
-          ...categoryPrice.toObject(), // Convert to plain object
-          priceDifference: priceDifferenceData, // Update with new price difference
-        };
-      }));
-
-      // Return updated MandiCategoryPrice object
-      return {
-        ...mandiCategoryPrice.toObject(),
-        categoryPrices: updatedCategoryPrices,
-      };
-    }));
-    // console.log("DAta ===>",updatedData)
-    res.status(200).json(updatedData);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
 // Get price difference and percentage change
 const getPriceDifference = async (req, res) => {
   try {
@@ -424,6 +379,177 @@ const getPriceDifference2 = async (mandiId, category,subCategory) => {
   }
 };
 
+/**
+ * Enriches mandi rate documents with per-line priceDifference (same logic as legacy GET /mandiRates).
+ * @param {Array} docs - Mongoose docs or plain objects with populated `mandi` and `categoryPrices`.
+ */
+const enrichMandiRatesWithPriceDifferences = async (docs) => {
+  return Promise.all(
+    docs.map(async (mandiCategoryPrice) => {
+      const base =
+        typeof mandiCategoryPrice.toObject === 'function'
+          ? mandiCategoryPrice.toObject()
+          : { ...mandiCategoryPrice };
+
+      const updatedCategoryPrices = await Promise.all(
+        (base.categoryPrices || []).map(async (categoryPrice) => {
+          const cp =
+            categoryPrice && typeof categoryPrice.toObject === 'function'
+              ? categoryPrice.toObject()
+              : { ...categoryPrice };
+          const { category, subCategory } = cp;
+
+          if (!base.mandi) {
+            return { ...cp, priceDifference: {} };
+          }
+
+          const mandiId = base.mandi._id != null ? base.mandi._id : base.mandi;
+          const priceDifferenceData = (await getPriceDifference2(mandiId, category, subCategory)) || {};
+
+          return {
+            ...cp,
+            priceDifference: priceDifferenceData,
+          };
+        })
+      );
+
+      return {
+        ...base,
+        categoryPrices: updatedCategoryPrices,
+      };
+    })
+  );
+};
+
+/**
+ * Live Rates home screen: documents whose relevance timestamp falls in [from, to] (UTC rolling window),
+ * then latest document per mandi. Relevance = max(document.updatedAt, max(categoryPrices[].date)).
+ * @see GET /mandiRates/live-summary
+ */
+const getLiveSummary = async (req, res) => {
+  try {
+    const rawDays = req.query.days;
+    let days = rawDays === undefined || rawDays === '' ? 3 : parseInt(String(rawDays), 10);
+    if (!Number.isFinite(days) || days < 1) days = 3;
+    const maxDays = 90;
+    if (days > maxDays) days = maxDays;
+
+    const to = new Date();
+    const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
+
+    const mandiCollection = Mandi.collection.name;
+
+    const pipeline = [
+      // Superset filter so Mongo can use indexes on updatedAt / categoryPrices.date before computing relevanceAt
+      {
+        $match: {
+          $or: [{ updatedAt: { $gte: from } }, { 'categoryPrices.date': { $gte: from } }],
+        },
+      },
+      {
+        $addFields: {
+          maxPriceDate: {
+            $reduce: {
+              input: { $ifNull: ['$categoryPrices', []] },
+              initialValue: null,
+              in: {
+                $let: {
+                  vars: { d: '$$this.date' },
+                  in: {
+                    $cond: [
+                      { $eq: ['$$d', null] },
+                      '$$value',
+                      {
+                        $cond: [
+                          { $eq: ['$$value', null] },
+                          '$$d',
+                          { $max: ['$$value', '$$d'] },
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      {
+        $addFields: {
+          relevanceAt: {
+            $cond: [
+              { $eq: ['$maxPriceDate', null] },
+              '$updatedAt',
+              { $max: ['$updatedAt', '$maxPriceDate'] },
+            ],
+          },
+        },
+      },
+      { $match: { relevanceAt: { $gte: from } } },
+      { $sort: { mandi: 1, relevanceAt: -1 } },
+      {
+        $group: {
+          _id: '$mandi',
+          doc: { $first: '$$ROOT' },
+        },
+      },
+      { $replaceRoot: { newRoot: '$doc' } },
+      {
+        $lookup: {
+          from: mandiCollection,
+          localField: 'mandi',
+          foreignField: '_id',
+          as: '_mandiPop',
+        },
+      },
+      {
+        $addFields: {
+          mandi: { $arrayElemAt: ['$_mandiPop', 0] },
+        },
+      },
+      { $project: { _mandiPop: 0, maxPriceDate: 0, relevanceAt: 0 } },
+    ];
+
+    const rows = await MandiCategoryPrice.aggregate(pipeline);
+
+    const rates = await enrichMandiRatesWithPriceDifferences(rows);
+
+    const stateSet = new Set();
+    rates.forEach((row) => {
+      const state = row.mandi && row.mandi.state;
+      if (typeof state === 'string' && state.trim() !== '') {
+        stateSet.add(state.trim());
+      }
+    });
+    const statesWithRates = Array.from(stateSet).sort((a, b) => a.localeCompare(b));
+
+    res.status(200).json({
+      rates,
+      statesWithRates,
+      window: {
+        days,
+        from: from.toISOString(),
+        to: to.toISOString(),
+        timezone: 'UTC',
+        relevance:
+          'max(document.updatedAt, max(categoryPrices[].date)); window is rolling UTC from `to`',
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get all data
+const getAllData = async (req, res) => {
+  try {
+    const data = await MandiCategoryPrice.find().populate('mandi');
+    const updatedData = await enrichMandiRatesWithPriceDifferences(data);
+    res.status(200).json(updatedData);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
 
 // Get entire history of a Mandi
 const getMandiHistory = async (req, res) => {
@@ -535,4 +661,4 @@ const getMandiByCategory = async (req, res) => {
   }
 };
 
-export {saveOrUpdateMandiCategoryPrices, saveCategoryPrices, updateCategoryPrice, deleteCategoryPrice, getAllData, getPriceDifference, getMandiHistory, getCategoryHistory, getHistoryByTimeframe, getMandiByCategory };
+export {saveOrUpdateMandiCategoryPrices, saveCategoryPrices, updateCategoryPrice, deleteCategoryPrice, getAllData, getLiveSummary, getPriceDifference, getMandiHistory, getCategoryHistory, getHistoryByTimeframe, getMandiByCategory };

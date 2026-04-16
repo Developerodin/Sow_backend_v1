@@ -72,6 +72,11 @@ const MandiCategoryPriceSchema = new Schema({
   timestamps: true, // Automatically adds createdAt and updatedAt fields
 });
 
+// Live summary + admin queries: filter/sort by mandi and recency
+MandiCategoryPriceSchema.index({ mandi: 1, updatedAt: -1 });
+MandiCategoryPriceSchema.index({ updatedAt: -1 });
+MandiCategoryPriceSchema.index({ 'categoryPrices.date': -1 });
+
 const MandiCategoryPrice = mongoose.model('MandiCategoryPrice', MandiCategoryPriceSchema);
 
 export default MandiCategoryPrice;
