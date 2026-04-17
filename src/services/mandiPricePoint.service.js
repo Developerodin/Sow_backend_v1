@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 import moment from 'moment';
-import MandiPricePoint from '../models/MandiPricePoint.model.js';
+import MandiCategoryPrice from '../models/MandiRates.model.js';
 
 const IST_OFFSET_MINUTES = 330;
 
@@ -13,14 +13,15 @@ export function normalizeSubCategory(value) {
     .replace(/\s+/g, ' ');
 }
 
+/** Trim, lowercase, collapse spaces — consistent matching for category + query. */
 export function normalizeCategory(value) {
-  if (value == null) return '';
-  return String(value).trim();
+  if (value == null || value === '') return '';
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
 }
 
-/**
- * Parse "10:30 AM" / "3:45 PM" style time; returns { hour, minute } in 24h or null.
- */
 function parseIndian12hTime(timeStr) {
   if (!timeStr || typeof timeStr !== 'string') return null;
   const m = timeStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
@@ -36,7 +37,6 @@ function parseIndian12hTime(timeStr) {
 
 /**
  * IST calendar instant from a Date (or ISO) + optional 12h time string.
- * Stored as UTC Date in MongoDB.
  */
 export function computeAtFromLine({ date, time, lineUpdatedAt }, parentUpdatedAt) {
   const fallback = lineUpdatedAt || parentUpdatedAt || new Date();
@@ -58,103 +58,95 @@ export function computeAtFromLine({ date, time, lineUpdatedAt }, parentUpdatedAt
   return Number.isNaN(startIst.getTime()) ? new Date(base) : startIst;
 }
 
-/**
- * Fire-and-forget: log errors only.
- */
-export async function insertMandiPricePoints(docs) {
-  if (!docs || docs.length === 0) return;
-  try {
-    await MandiPricePoint.insertMany(docs, { ordered: false });
-  } catch (err) {
-    console.error('MandiPricePoint insertMany error:', err.message);
-  }
-}
-
 function toObjectId(mandiId) {
   if (!mandiId) return null;
   try {
-    return typeof mandiId === 'string' ? mongoose.Types.ObjectId(mandiId) : mandiId;
+    if (mandiId instanceof mongoose.Types.ObjectId) return mandiId;
+    const s = String(mandiId);
+    if (!mongoose.Types.ObjectId.isValid(s)) return null;
+    return new mongoose.Types.ObjectId(s);
   } catch (e) {
     return null;
   }
 }
 
+function coercePrice(value) {
+  if (value === undefined || value === null || value === '') return 0;
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 /**
- * Build price-point rows from saved category price lines (embedded docs or plain objects).
+ * Each MandiCategoryPrice document is one snapshot; history = many documents for the same mandi over time.
+ * Extracts one observation per matching line per document, with `at` aligned to line date/time or doc timestamps.
  */
-export function buildPricePointDocs(mandiId, categoryPrices, sourceRateId, parentUpdatedAt) {
-  const mid = toObjectId(mandiId);
-  if (!mid || !Array.isArray(categoryPrices)) return [];
-
-  const sid = sourceRateId ? toObjectId(sourceRateId) : undefined;
-  const parentAt = parentUpdatedAt instanceof Date ? parentUpdatedAt : new Date(parentUpdatedAt);
-
-  return categoryPrices
-    .map((cp) => {
-      const line = cp && typeof cp.toObject === 'function' ? cp.toObject() : cp;
-      if (!line || line.category == null) return null;
-
-      const category = normalizeCategory(line.category);
-      const subNorm = normalizeSubCategory(line.subCategory);
+function extractRawPointsForSeries(docs, catNorm, subNorm, range) {
+  const raw = [];
+  for (const doc of docs) {
+    const parentUpdatedAt = doc.updatedAt || doc.createdAt;
+    const lines = doc.categoryPrices || [];
+    for (const line of lines) {
+      if (normalizeCategory(line.category) !== catNorm) continue;
+      if (normalizeSubCategory(line.subCategory) !== subNorm) continue;
       const at = computeAtFromLine(
         {
           date: line.date,
           time: line.time,
           lineUpdatedAt: line.updatedAt,
         },
-        parentAt
+        parentUpdatedAt
       );
-      const price = typeof line.price === 'number' ? line.price : Number(line.price);
-      if (Number.isNaN(price)) return null;
-
-      return {
-        mandiId: mid,
-        category,
-        subCategory: subNorm,
+      if (at < range.from || at > range.to) continue;
+      raw.push({
         at,
-        price,
-        unit: line.unit || undefined,
-        sourceRateId: sid,
-      };
-    })
-    .filter(Boolean);
+        price: coercePrice(line.price),
+        unit: line.unit || null,
+      });
+    }
+  }
+  raw.sort((a, b) => a.at - b.at);
+  return raw;
+}
+
+function labelFromBucketKey(key, timeframe, tzMode) {
+  if (!key) return '';
+  if (timeframe === 'year') {
+    const m =
+      tzMode === 'utc' ? moment.utc(key, 'YYYY-MM') : moment(key, 'YYYY-MM').utcOffset(IST_OFFSET_MINUTES);
+    return m.isValid() ? m.format('MMM YYYY') : key;
+  }
+  const m =
+    tzMode === 'utc' ? moment.utc(key, 'YYYY-MM-DD') : moment(key, 'YYYY-MM-DD').utcOffset(IST_OFFSET_MINUTES);
+  return m.isValid() ? m.format('D MMM') : key;
+}
+
+function bucketKeyForDate(d, timeframe, tzMode) {
+  const m =
+    tzMode === 'utc' ? moment.utc(d) : moment(d).utcOffset(IST_OFFSET_MINUTES);
+  if (timeframe === 'year') return m.format('YYYY-MM');
+  return m.format('YYYY-MM-DD');
 }
 
 /**
- * Single row from bulk/API payload (mandi-prices).
+ * Last observation per calendar bucket (day or month) in the chosen timezone.
  */
-export function buildPricePointDocFromPayload({
-  mandiId,
-  category,
-  subCategory,
-  price,
-  unit,
-  date,
-  time,
-  sourceRateId,
-  fallbackAt,
-}) {
-  const mid = toObjectId(mandiId);
-  if (!mid) return null;
-
-  const categoryNorm = normalizeCategory(category);
-  const subNorm = normalizeSubCategory(subCategory);
-  const at = computeAtFromLine(
-    { date, time, lineUpdatedAt: null },
-    fallbackAt || new Date()
-  );
-  const p = typeof price === 'number' ? price : Number(price);
-  if (Number.isNaN(p)) return null;
-
-  return {
-    mandiId: mid,
-    category: categoryNorm,
-    subCategory: subNorm,
-    at,
-    price: p,
-    unit: unit || undefined,
-    sourceRateId: sourceRateId ? toObjectId(sourceRateId) : undefined,
-  };
+function bucketRawPoints(rawPoints, timeframe, tzMode) {
+  if (rawPoints.length === 0) return [];
+  const map = new Map();
+  for (const p of rawPoints) {
+    const key = bucketKeyForDate(p.at, timeframe, tzMode);
+    const prev = map.get(key);
+    if (!prev || p.at > prev.at) map.set(key, p);
+  }
+  const keys = [...map.keys()].sort();
+  return keys.map((key) => {
+    const p = map.get(key);
+    return {
+      at: p.at.toISOString(),
+      price: p.price,
+      label: labelFromBucketKey(key, timeframe, tzMode),
+    };
+  });
 }
 
 /** Range rules for `at` filter: IST (default) or UTC via tzMode. */
@@ -183,31 +175,9 @@ export function getAtRangeForTimeframe(timeframe, tzMode = 'ist') {
   return { from, to };
 }
 
-function bucketFieldForTimeframe(timeframe, tzMode) {
-  const tz = tzMode === 'utc' ? 'UTC' : 'Asia/Kolkata';
-  if (timeframe === 'year') {
-    return {
-      $dateToString: { format: '%Y-%m', date: '$at', timezone: tz },
-    };
-  }
-  return {
-    $dateToString: { format: '%Y-%m-%d', date: '$at', timezone: tz },
-  };
-}
-
-function labelFromBucketKey(key, timeframe, tzMode) {
-  if (!key) return '';
-  const parseUtc = (s, f) => (tzMode === 'utc' ? moment.utc(s, f) : moment(s, f).utcOffset(IST_OFFSET_MINUTES));
-  if (timeframe === 'year') {
-    const m = parseUtc(key, 'YYYY-MM');
-    return m.isValid() ? m.format('MMM YYYY') : key;
-  }
-  const m = parseUtc(key, 'YYYY-MM-DD');
-  return m.isValid() ? m.format('D MMM') : key;
-}
-
 /**
- * Read price history: raw points for `today`, bucketed for week/month/year.
+ * Price history from MandiCategoryPrice snapshots only (no separate collection).
+ * Requires multiple documents over time for the same mandi for a real series; a single upserted doc yields at most one point per line in-range.
  */
 export async function fetchPriceHistory({
   mandiId,
@@ -230,50 +200,22 @@ export async function fetchPriceHistory({
     to: range.to.toISOString(),
   };
 
-  const match = {
-    mandiId: mid,
-    category: cat,
-    subCategory: sub,
-    at: { $gte: range.from, $lte: range.to },
-  };
+  const docs = await MandiCategoryPrice.find({ mandi: mid }).lean();
+  const rawPoints = extractRawPointsForSeries(docs, cat, sub, range);
+  const unit = rawPoints.length ? rawPoints[rawPoints.length - 1].unit : null;
 
   const labelTime = (d) =>
     tzMode === 'utc' ? moment.utc(d).format('HH:mm') : moment(d).utcOffset(IST_OFFSET_MINUTES).format('HH:mm');
 
   if (timeframe === 'today') {
-    const rows = await MandiPricePoint.find(match).sort({ at: 1 }).lean();
-    const unit = rows.length ? rows[rows.length - 1].unit || null : null;
-    const points = rows.map((r) => ({
-      at: r.at.toISOString(),
-      price: r.price,
-      label: labelTime(r.at),
+    const points = rawPoints.map((p) => ({
+      at: p.at.toISOString(),
+      price: p.price,
+      label: labelTime(p.at),
     }));
     return { points, unit, window: windowMeta };
   }
 
-  const bucket = bucketFieldForTimeframe(timeframe, tzMode);
-
-  const pipeline = [
-    { $match: match },
-    { $sort: { at: 1 } },
-    {
-      $group: {
-        _id: bucket,
-        at: { $last: '$at' },
-        price: { $last: '$price' },
-        unit: { $last: '$unit' },
-      },
-    },
-    { $sort: { _id: 1 } },
-  ];
-
-  const agg = await MandiPricePoint.aggregate(pipeline);
-  const unit = agg.length ? agg[agg.length - 1].unit || null : null;
-  const points = agg.map((row) => ({
-    at: row.at instanceof Date ? row.at.toISOString() : new Date(row.at).toISOString(),
-    price: row.price,
-    label: labelFromBucketKey(row._id, timeframe, tzMode),
-  }));
-
+  const points = bucketRawPoints(rawPoints, timeframe, tzMode);
   return { points, unit, window: windowMeta };
 }

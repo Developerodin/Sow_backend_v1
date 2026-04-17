@@ -3,12 +3,6 @@ import MandiCategoryPrice from '../models/MandiRates.model.js';
 import Mandi from '../models/Mandi.model.js';
 import Notification from '../models/b2bNotification.js';
 import { sendNotificationToAllUsers } from './pushNotifications.controller.js';
-import {
-  insertMandiPricePoints,
-  buildPricePointDocs,
-  buildPricePointDocFromPayload,
-} from '../services/mandiPricePoint.service.js';
-
 // Save the entire array of categories with prices
 const saveCategoryPrices = async (req, res) => {
   try {
@@ -29,14 +23,6 @@ const saveCategoryPrices = async (req, res) => {
     
     const newMandiCategoryPrice = new MandiCategoryPrice({ mandi, categoryPrices });
     await newMandiCategoryPrice.save();
-    insertMandiPricePoints(
-      buildPricePointDocs(
-        mandi,
-        newMandiCategoryPrice.categoryPrices,
-        newMandiCategoryPrice._id,
-        newMandiCategoryPrice.updatedAt
-      )
-    );
     res.status(201).json(newMandiCategoryPrice);
 
     // Push Notification logic
@@ -78,14 +64,6 @@ const updateCategoryPrice = async (req, res) => {
       if (newPrice !== undefined) categoryPrice.price = newPrice;
       if (unit !== undefined) categoryPrice.unit = unit;
       await mandiCategoryPrice.save();
-      insertMandiPricePoints(
-        buildPricePointDocs(
-          mandiId,
-          [categoryPrice],
-          mandiCategoryPrice._id,
-          mandiCategoryPrice.updatedAt
-        )
-      );
       res.status(200).json(mandiCategoryPrice);
     } else {
       res.status(404).json({ message: 'Category not found' });
@@ -261,24 +239,6 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
     console.log('Executing bulkWrite with', bulkWriteOperations.length, 'operations');
     await MandiCategoryPrice.bulkWrite(bulkWriteOperations);
     console.log('BulkWrite completed successfully');
-
-    const fallbackAt = new Date();
-    const pointDocs = validMandiPrices
-      .map((e) =>
-        buildPricePointDocFromPayload({
-          mandiId: e.mandiId,
-          category: e.category,
-          subCategory: e.subCategory,
-          price: e.price,
-          unit: e.unit,
-          date: e.date,
-          time: e.time,
-          sourceRateId: null,
-          fallbackAt,
-        })
-      )
-      .filter(Boolean);
-    insertMandiPricePoints(pointDocs);
 
     // Push Notification logic
     try {
