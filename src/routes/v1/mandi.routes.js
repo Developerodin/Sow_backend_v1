@@ -1,5 +1,6 @@
 import express from 'express';
 import { createMandi, getAllMandi, getMandiById, updateMandi, deleteMandi, changeMandiStatus  } from '../../controllers/mandi.controller.js';
+import { getMandiPriceHistory } from '../../controllers/mandiPriceHistory.controller.js';
 
 
 const router = express.Router();
@@ -7,6 +8,8 @@ const router = express.Router();
 // Routes
 router.post('/', createMandi);
 router.get('/', getAllMandi);
+/** Chart / modal: materialized price points (must be before /:id). */
+router.get('/:mandiId/price-history', getMandiPriceHistory);
 router.get('/:id', getMandiById);
 router.patch('/:id', updateMandi);
 router.delete('/:id', deleteMandi);
