@@ -1,15 +1,26 @@
 import DailyRates from "../models/dailyRates.model.js";
 
+const timeRegex = /^(0?[1-9]|1[0-2]):[0-5][0-9] (AM|PM)$/;
 
 // Create a new DailyRate
 const createDailyRate = async (req, res) => {
   try {
-    const { name,text, date } = req.body;
+    const { name, text, date, time } = req.body;
+
+    if (time != null && String(time).trim() !== '' && !timeRegex.test(String(time).trim())) {
+      return res.status(400).json({
+        message: 'Invalid time format. Time must be in 12-hour format (e.g., "10:30 AM", "03:45 PM")',
+        invalidTime: time
+      });
+    }
+
+    const trimmedTime = time != null && String(time).trim() !== '' ? String(time).trim() : undefined;
 
     const newDailyRate = new DailyRates({
       name,
       text,
-      date
+      date,
+      ...(trimmedTime ? { time: trimmedTime } : {})
     });
 
     await newDailyRate.save();

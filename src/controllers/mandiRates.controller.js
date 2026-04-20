@@ -299,13 +299,9 @@ const getPriceDifference = async (req, res) => {
       return res.status(400).json({ message: 'Not enough data to compare prices' });
     }
 
-    // Extract the current and previous prices
-    // console.log("Array data  ==>",categoryPrices[categoryPrices.length -1],categoryPrices[categoryPrices.length -2])
-    const currentPrice = categoryPrices[categoryPrices.length - 1].price;
-    const previousPrice = categoryPrices[categoryPrices.length -2].price;
-    //  console.log("cureent price ==>",currentPrice )
-    //  console.log("previous Price ==>",previousPrice )
-    // Calculate the difference and percent change
+    // Sorted descending (latest first): [0] = current, [1] = previous
+    const currentPrice = categoryPrices[0].price;
+    const previousPrice = categoryPrices[1].price;
     const difference = currentPrice - previousPrice;
     const percentChange = ((difference / previousPrice) * 100).toFixed(2);
     const tag = difference > 0 ? 'Increment' : 'Decrement';
@@ -352,18 +348,13 @@ const getPriceDifference2 = async (mandiId, category,subCategory) => {
       return {};
     }
 
-    // Extract the current and previous prices
-    // console.log("Array data  ==>",categoryPrices[categoryPrices.length -1],categoryPrices[categoryPrices.length -2])
-    const currentPrice = categoryPrices[categoryPrices.length - 1].price;
-    const previousPrice = categoryPrices[categoryPrices.length -2].price;
-    //  console.log("cureent price ==>",currentPrice )
-    //  console.log("previous Price ==>",previousPrice )
-    // Calculate the difference and percent change
+    // Sorted descending (latest first): [0] = current, [1] = previous
+    const currentPrice = categoryPrices[0].price;
+    const previousPrice = categoryPrices[1].price;
     const difference = currentPrice - previousPrice;
     const percentChange = ((difference / previousPrice) * 100).toFixed(2);
     const tag = difference > 0 ? 'Increment' : 'Decrement';
 
-    // Return the result as JSON
     return({
       category,
       currentPrice,

@@ -49,6 +49,10 @@ export default router;
  *                 type: string
  *                 format: date
  *                 description: Date of the event
+ *               time:
+ *                 type: string
+ *                 description: Time of the rate in 12-hour format (e.g. 10:30 AM)
+ *                 example: "10:30 AM"
  *               status:
  *                 type: boolean
  *                 description: Status of the event
@@ -56,6 +60,7 @@ export default router;
  *               name: "Daily Event"
  *               text: "Description of the daily event"
  *               date: "2024-11-22"
+ *               time: "10:30 AM"
  *               status: true
  *     responses:
  *       "201":
@@ -129,6 +134,10 @@ export default router;
  *           type: string
  *           format: date
  *           description: Date of the event
+ *         time:
+ *           type: string
+ *           description: Time of the rate in 12-hour format
+ *           example: "10:30 AM"
  *         status:
  *           type: boolean
  *           description: Status of the event
@@ -145,6 +154,7 @@ export default router;
  *         name: "Daily Event"
  *         text: "Description of the daily event"
  *         date: "2024-11-22"
+ *         time: "10:30 AM"
  *         status: true
  *         createdAt: "2024-11-22T10:30:00Z"
  *         updatedAt: "2024-11-22T10:30:00Z"

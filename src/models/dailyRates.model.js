@@ -15,6 +15,10 @@ const eventSchema = new mongoose.Schema({
     type: Date,
     required: true
   },
+  time: {
+    type: String,
+    trim: true
+  },
   status:{
     type: Boolean,
     default:true
