@@ -3,6 +3,13 @@ import MandiCategoryPrice from '../models/MandiRates.model.js';
 import Mandi from '../models/Mandi.model.js';
 import Notification from '../models/b2bNotification.js';
 import { sendNotificationToAllUsers } from './pushNotifications.controller.js';
+
+/** Two-decimal rounding for prices/deltas in API JSON (avoids float artifacts e.g. -0.699999999999993). */
+const roundPrice2 = (n) => {
+  if (typeof n !== 'number' || Number.isNaN(n)) return n;
+  return parseFloat(n.toFixed(2));
+};
+
 // Save the entire array of categories with prices
 const saveCategoryPrices = async (req, res) => {
   try {
@@ -273,142 +280,147 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
   }
 };
 
-// Get price difference and percentage change
-const getPriceDifference = async (req, res) => {
+/**
+ * Same math as GET /mandiRates/difference, but sync from already-loaded docs for one mandi.
+ * @param {Array} mandiCategoryPriceDocs - all MandiCategoryPrice documents for one mandi (any mix of lean / doc)
+ */
+const computePriceDifferenceFromMandiDocs = (mandiCategoryPriceDocs, category, subCategory) => {
   try {
-    const { mandiId, category,subCategory } = req.params;
-
-    // Find all MandiCategoryPrice documents for the specified mandiId
-    const mandiCategoryPrices = await MandiCategoryPrice.find({ mandi: mandiId });
-
-    // Check if any mandiCategoryPrices were found
-    if (!mandiCategoryPrices || mandiCategoryPrices.length === 0) {
-      return res.status(404).json({ message: 'Mandi not found' });
+    if (!mandiCategoryPriceDocs || mandiCategoryPriceDocs.length === 0) {
+      return {};
     }
 
-    // Flatten the categoryPrices array from all documents
-    const allCategoryPrices = mandiCategoryPrices.flatMap(mandi => mandi.categoryPrices);
+    const allCategoryPrices = mandiCategoryPriceDocs.flatMap((doc) =>
+      (doc.categoryPrices || []).map((cp) =>
+        cp && typeof cp.toObject === 'function' ? cp.toObject() : { ...cp }
+      )
+    );
 
-    // Filter for the specified category and sort by createdAt in descending order
     const categoryPrices = allCategoryPrices
-      .filter(cp => cp.category === category && cp.subCategory === subCategory)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by timestamp, latest first
+      .filter((cp) => cp.category === category && cp.subCategory === subCategory)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
-    // Check if there are enough prices to compare
     if (categoryPrices.length < 2) {
-      return res.status(400).json({ message: 'Not enough data to compare prices' });
+      return {};
     }
 
-    // Sorted descending (latest first): [0] = current, [1] = previous
-    const currentPrice = categoryPrices[0].price;
-    const previousPrice = categoryPrices[1].price;
-    const difference = currentPrice - previousPrice;
-    const percentChange = ((difference / previousPrice) * 100).toFixed(2);
+    const currentPrice = roundPrice2(categoryPrices[0].price);
+    const previousPrice = roundPrice2(categoryPrices[1].price);
+    const difference = roundPrice2(currentPrice - previousPrice);
+    const percentChange =
+      previousPrice === 0 ? '0.00' : ((difference / previousPrice) * 100).toFixed(2);
     const tag = difference > 0 ? 'Increment' : 'Decrement';
 
-    // Return the result as JSON
-    res.status(200).json({
+    return {
       category,
       currentPrice,
       previousPrice,
       difference,
       percentChange,
       tag,
-    });
+    };
+  } catch (err) {
+    console.error('Error in computePriceDifferenceFromMandiDocs:', err);
+    return {};
+  }
+};
+
+// Get price difference and percentage change
+const getPriceDifference = async (req, res) => {
+  try {
+    const { mandiId, category, subCategory } = req.params;
+
+    const mandiCategoryPrices = await MandiCategoryPrice.find({ mandi: mandiId });
+
+    if (!mandiCategoryPrices || mandiCategoryPrices.length === 0) {
+      return res.status(404).json({ message: 'Mandi not found' });
+    }
+
+    const payload = computePriceDifferenceFromMandiDocs(mandiCategoryPrices, category, subCategory);
+    if (Object.keys(payload).length === 0) {
+      return res.status(400).json({ message: 'Not enough data to compare prices' });
+    }
+
+    res.status(200).json(payload);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-const getPriceDifference2 = async (mandiId, category,subCategory) => {
-  try {
-    // Check if mandiId is valid
-    if (!mandiId) {
-      return {};
-    }
-
-    // Find all MandiCategoryPrice documents for the specified mandiId
-    const mandiCategoryPrices = await MandiCategoryPrice.find({ mandi: mandiId });
-
-    // Check if any mandiCategoryPrices were found
-    if (!mandiCategoryPrices || mandiCategoryPrices.length === 0) {
-      return {}
-    }
-
-    // Flatten the categoryPrices array from all documents
-    const allCategoryPrices = mandiCategoryPrices.flatMap(mandi => mandi.categoryPrices);
-
-    // Filter for the specified category and sort by createdAt in descending order
-    const categoryPrices = allCategoryPrices
-      .filter(cp => cp.category === category && cp.subCategory === subCategory)
-      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)); // Sort by timestamp, latest first
-
-    // Check if there are enough prices to compare
-    if (categoryPrices.length < 2) {
-      return {};
-    }
-
-    // Sorted descending (latest first): [0] = current, [1] = previous
-    const currentPrice = categoryPrices[0].price;
-    const previousPrice = categoryPrices[1].price;
-    const difference = currentPrice - previousPrice;
-    const percentChange = ((difference / previousPrice) * 100).toFixed(2);
-    const tag = difference > 0 ? 'Increment' : 'Decrement';
-
-    return({
-      category,
-      currentPrice,
-      previousPrice,
-      difference,
-      percentChange,
-      tag,
-    });
-  } catch (error) {
-    console.error('Error in getPriceDifference2:', error);
-    return {};
-  }
-};
-
 /**
  * Enriches mandi rate documents with per-line priceDifference (same logic as legacy GET /mandiRates).
+ * Uses one batched history load per unique mandi instead of one query per category line (fixes live-summary N+1).
  * @param {Array} docs - Mongoose docs or plain objects with populated `mandi` and `categoryPrices`.
  */
 const enrichMandiRatesWithPriceDifferences = async (docs) => {
-  return Promise.all(
-    docs.map(async (mandiCategoryPrice) => {
-      const base =
-        typeof mandiCategoryPrice.toObject === 'function'
-          ? mandiCategoryPrice.toObject()
-          : { ...mandiCategoryPrice };
+  if (!docs || docs.length === 0) {
+    return [];
+  }
 
-      const updatedCategoryPrices = await Promise.all(
-        (base.categoryPrices || []).map(async (categoryPrice) => {
-          const cp =
-            categoryPrice && typeof categoryPrice.toObject === 'function'
-              ? categoryPrice.toObject()
-              : { ...categoryPrice };
-          const { category, subCategory } = cp;
+  const bases = docs.map((mandiCategoryPrice) =>
+    typeof mandiCategoryPrice.toObject === 'function'
+      ? mandiCategoryPrice.toObject()
+      : { ...mandiCategoryPrice }
+  );
 
-          if (!base.mandi) {
-            return { ...cp, priceDifference: {} };
-          }
+  const mandiIdStrings = new Set();
+  for (const base of bases) {
+    if (!base.mandi) continue;
+    const rawId = base.mandi._id != null ? base.mandi._id : base.mandi;
+    if (rawId == null) continue;
+    mandiIdStrings.add(String(rawId));
+  }
 
-          const mandiId = base.mandi._id != null ? base.mandi._id : base.mandi;
-          const priceDifferenceData = (await getPriceDifference2(mandiId, category, subCategory)) || {};
+  /** @type {Map<string, Array>} */
+  const historyByMandiId = new Map();
+  if (mandiIdStrings.size > 0) {
+    const objectIds = [...mandiIdStrings]
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
 
-          return {
-            ...cp,
-            priceDifference: priceDifferenceData,
-          };
-        })
-      );
+    if (objectIds.length > 0) {
+      const allHistory = await MandiCategoryPrice.find({ mandi: { $in: objectIds } }).lean();
+      for (const row of allHistory) {
+        const key = String(row.mandi);
+        if (!historyByMandiId.has(key)) {
+          historyByMandiId.set(key, []);
+        }
+        historyByMandiId.get(key).push(row);
+      }
+    }
+  }
+
+  return bases.map((base) => {
+    const mandiKey = base.mandi
+      ? String(base.mandi._id != null ? base.mandi._id : base.mandi)
+      : null;
+    const historyForMandi = mandiKey ? historyByMandiId.get(mandiKey) || [] : [];
+
+    const updatedCategoryPrices = (base.categoryPrices || []).map((categoryPrice) => {
+      const cp =
+        categoryPrice && typeof categoryPrice.toObject === 'function'
+          ? categoryPrice.toObject()
+          : { ...categoryPrice };
+      const { category, subCategory } = cp;
+
+      if (!base.mandi) {
+        return { ...cp, priceDifference: {} };
+      }
+
+      const priceDifferenceData =
+        computePriceDifferenceFromMandiDocs(historyForMandi, category, subCategory) || {};
 
       return {
-        ...base,
-        categoryPrices: updatedCategoryPrices,
+        ...cp,
+        priceDifference: priceDifferenceData,
       };
-    })
-  );
+    });
+
+    return {
+      ...base,
+      categoryPrices: updatedCategoryPrices,
+    };
+  });
 };
 
 /**
