@@ -229,10 +229,27 @@ const matchMandi = async (mandiName, autoCreate = false) => {
  */
 const matchEntities = async (parsedData) => {
   const warnings = [];
+  const failedRates = [];
   const matchedRates = [];
   const createdEntities = {
     categories: [],
     subCategories: [],
+  };
+
+  // Structured failure recorder — produces rows the frontend can render and
+  // export back into the same Excel template used for manual uploads.
+  const pushFailure = ({ rate = {}, mandiPrice = null, reason, missingFields = [] }) => {
+    failedRates.push({
+      category: rate.category ?? null,
+      subCategory: rate.subCategory ?? null,
+      mandi: mandiPrice ? (mandiPrice.mandi ?? null) : null,
+      price: mandiPrice && mandiPrice.price !== undefined ? mandiPrice.price : null,
+      priceDifference:
+        mandiPrice && mandiPrice.priceDifference !== undefined ? mandiPrice.priceDifference : null,
+      unit: mandiPrice && mandiPrice.unit ? mandiPrice.unit : null,
+      reason,
+      missingFields,
+    });
   };
 
   for (let idx = 0; idx < parsedData.rates.length; idx++) {
@@ -247,6 +264,14 @@ const matchEntities = async (parsedData) => {
     if (!rate.category || rate.category.toLowerCase() === 'null' || rate.category.toLowerCase() === 'unknown' || rate.category.trim() === '') {
       warnings.push(`Skipping rate with invalid category: '${rate.category}'`);
       console.log(LOG_PREFIX, `rate[${idx}] skipped: invalid category`);
+      for (const mp of rate.mandiPrices || [{}]) {
+        pushFailure({
+          rate,
+          mandiPrice: mp,
+          reason: `Invalid or missing category: '${rate.category ?? ''}'`,
+          missingFields: ['category'],
+        });
+      }
       continue;
     }
 
@@ -255,6 +280,14 @@ const matchEntities = async (parsedData) => {
     if (!category) {
       warnings.push(`Could not match category: '${rate.category}'`);
       console.log(LOG_PREFIX, `rate[${idx}] skipped: category not matched`, { rawCategory: rate.category });
+      for (const mp of rate.mandiPrices || [{}]) {
+        pushFailure({
+          rate,
+          mandiPrice: mp,
+          reason: `Category '${rate.category}' could not be matched in DB`,
+          missingFields: ['category'],
+        });
+      }
       continue;
     }
 
@@ -285,6 +318,14 @@ const matchEntities = async (parsedData) => {
       if (rate.subCategory.toLowerCase() === 'null' || rate.subCategory.toLowerCase() === 'unknown' || rate.subCategory.trim() === '') {
         warnings.push(`Skipping rate with invalid subcategory: '${rate.subCategory}'`);
         console.log(LOG_PREFIX, `rate[${idx}] skipped: invalid subcategory string from AI`, { subCategory: rate.subCategory });
+        for (const mp of rate.mandiPrices || [{}]) {
+          pushFailure({
+            rate,
+            mandiPrice: mp,
+            reason: `Invalid subcategory: '${rate.subCategory}'`,
+            missingFields: ['subCategory'],
+          });
+        }
         continue;
       }
       
@@ -321,6 +362,16 @@ const matchEntities = async (parsedData) => {
         category: category.name,
         aiSubCategory: rate.subCategory,
       });
+      for (const mp of rate.mandiPrices || [{}]) {
+        pushFailure({
+          rate: { ...rate, category: category.name },
+          mandiPrice: mp,
+          reason: rate.subCategory
+            ? `Sub Category '${rate.subCategory}' could not be matched under '${category.name}'`
+            : `Sub Category is required for '${category.name}' but was missing`,
+          missingFields: ['subCategory'],
+        });
+      }
       continue;
     }
 
@@ -330,13 +381,44 @@ const matchEntities = async (parsedData) => {
       // Skip if mandi is null, unknown, or empty
       if (!mandiPrice.mandi || mandiPrice.mandi.toLowerCase() === 'null' || mandiPrice.mandi.toLowerCase() === 'unknown' || mandiPrice.mandi.trim() === '') {
         warnings.push(`Skipping price with invalid mandi: '${mandiPrice.mandi}'`);
+        pushFailure({
+          rate: { ...rate, category: category.name, subCategory: subCategory?.name || rate.subCategory },
+          mandiPrice,
+          reason: `Invalid or missing mandi name`,
+          missingFields: ['mandi'],
+        });
         continue;
       }
 
+      // Validate price presence before mandi lookup so failure rows include it
+      const priceMissing =
+        mandiPrice.price === null ||
+        mandiPrice.price === undefined ||
+        mandiPrice.price === '' ||
+        Number.isNaN(Number(mandiPrice.price)) ||
+        Number(mandiPrice.price) === 0;
+
       const mandi = await matchMandi(mandiPrice.mandi, false); // Don't auto-create
-      
+
       if (!mandi) {
         warnings.push(`Could not match mandi: '${mandiPrice.mandi}' (skipped to avoid unknown state)`);
+        pushFailure({
+          rate: { ...rate, category: category.name, subCategory: subCategory?.name || rate.subCategory },
+          mandiPrice,
+          reason: `Mandi '${mandiPrice.mandi}' could not be matched in DB`,
+          missingFields: priceMissing ? ['mandi', 'price'] : ['mandi'],
+        });
+        continue;
+      }
+
+      if (priceMissing) {
+        warnings.push(`Skipping price for mandi '${mandi.name}': price missing or zero`);
+        pushFailure({
+          rate: { ...rate, category: category.name, subCategory: subCategory?.name || rate.subCategory },
+          mandiPrice: { ...mandiPrice, mandi: mandi.name },
+          reason: `Price is missing, zero or invalid`,
+          missingFields: ['price'],
+        });
         continue;
       }
 
@@ -374,6 +456,7 @@ const matchEntities = async (parsedData) => {
   return {
     matchedRates,
     warnings,
+    failedRates,
     createdEntities: {
       mandis: createdEntities.mandis || [],
     },
@@ -561,6 +644,9 @@ const parseAndUpdate = async (message) => {
       mandiCategoryPrices: updateResult.count,
     },
     warnings: matchedData.warnings,
+    // Structured per-row failure list used by the AI modal to render a table
+    // and to produce a "failed rates" Excel matching the upload template.
+    failed: matchedData.failedRates || [],
   };
 };
 

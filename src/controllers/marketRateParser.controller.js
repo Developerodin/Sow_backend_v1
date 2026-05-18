@@ -10,15 +10,21 @@ import MarketRateParseJob from '../models/MarketRateParseJob.model.js';
 const buildParseSuccessPayload = (result) => {
   let messageText = '';
   const matchedMandisCount = result.created?.mandis?.length || 0;
+  const failedCount = Array.isArray(result.failed) ? result.failed.length : 0;
 
   if (result.updated.mandiCategoryPrices > 0) {
     messageText = `Market rates added successfully. ${result.updated.mandiCategoryPrices} price${result.updated.mandiCategoryPrices === 1 ? '' : 's'} added`;
     if (matchedMandisCount > 0) {
       messageText += `. Matched ${matchedMandisCount} mandi${matchedMandisCount === 1 ? '' : 's'}`;
     }
+    if (failedCount > 0) {
+      messageText += `. ${failedCount} rate${failedCount === 1 ? '' : 's'} failed validation`;
+    }
   } else {
     messageText = 'Message parsed but no rates were added to database';
-    if (result.warnings && result.warnings.length > 0) {
+    if (failedCount > 0) {
+      messageText += `. ${failedCount} rate${failedCount === 1 ? '' : 's'} failed validation`;
+    } else if (result.warnings && result.warnings.length > 0) {
       messageText += `. ${result.warnings.length} warning${result.warnings.length === 1 ? '' : 's'} generated`;
     }
   }
