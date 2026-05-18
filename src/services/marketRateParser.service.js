@@ -19,9 +19,29 @@ const LOG_PREFIX = '[marketRateParser]';
 const matchCategory = async (categoryName) => {
   if (!categoryName) return null;
 
+  const normalizedSearch = categoryName.replace(/\s+/g, ' ').trim();
+  if (!normalizedSearch) return null;
+
+  // Strategy 0: Exact name match against Category collection (trim + case-insensitive).
+  // Do not require VectorEmbedding — categories without embeddings used to fail here.
+  const allCatsQuick = await Category.find({}).select('name').lean();
+  const exactCat = allCatsQuick.find(
+    (c) =>
+      (c.name || '').replace(/\s+/g, ' ').trim().toLowerCase() ===
+      normalizedSearch.toLowerCase()
+  );
+  if (exactCat) {
+    return {
+      _id: exactCat._id,
+      name: exactCat.name,
+      similarity: 1,
+      isExactDbMatch: true,
+    };
+  }
+
   // Strategy 1: First try to match as subcategory to find parent category
   // This handles cases like "News Paper" which is a subcategory of "Paper"
-  const subCategoryMatch = await findBestSingleMatch(categoryName, 'subcategory');
+  const subCategoryMatch = await findBestSingleMatch(normalizedSearch, 'subcategory');
   if (subCategoryMatch && subCategoryMatch.originalId) {
     const subCategory = await SubCategory.findById(subCategoryMatch.originalId._id || subCategoryMatch.originalId).populate('categoryId');
     if (subCategory && subCategory.categoryId) {
@@ -39,30 +59,30 @@ const matchCategory = async (categoryName) => {
   }
 
   // Strategy 2: Try to match directly as category
-  let match = await findBestSingleMatch(categoryName, 'category');
+  let match = await findBestSingleMatch(normalizedSearch, 'category');
   
   if (match && match.originalId) {
     return {
       _id: match.originalId._id || match.originalId,
-      name: match.originalId.name || categoryName,
+      name: match.originalId.name || normalizedSearch,
       similarity: match.similarity,
     };
   }
 
   // Strategy 3: Try fuzzy matching with existing categories
   // Check if the parsed name contains or is contained in any category name
-  const allCategories = await Category.find({});
-  const searchNameLower = categoryName.toLowerCase().trim();
-  
-  for (const cat of allCategories) {
-    const catNameLower = (cat.name || '').toLowerCase().trim();
-    
+  const searchNameLower = normalizedSearch.toLowerCase();
+
+  for (const cat of allCatsQuick) {
+    const catNameLower = (cat.name || '').replace(/\s+/g, ' ').trim().toLowerCase();
+
     // Check if category name contains search term or vice versa
     // e.g., "News Paper" contains "Paper", or "Paper" is in "News Paper"
-    if (catNameLower === searchNameLower ||
-        catNameLower.includes(searchNameLower) || 
-        searchNameLower.includes(catNameLower) ||
-        searchNameLower.replace(/\s+/g, '') === catNameLower.replace(/\s+/g, '')) {
+    if (
+      catNameLower.includes(searchNameLower) ||
+      searchNameLower.includes(catNameLower) ||
+      searchNameLower.replace(/\s+/g, '') === catNameLower.replace(/\s+/g, '')
+    ) {
       // Found a potential match, verify with vector matching
       const embeddingMatch = await findBestSingleMatch(cat.name, 'category');
       if (embeddingMatch && embeddingMatch.originalId) {
