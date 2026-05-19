@@ -3,6 +3,7 @@ import {
   saveCategoryPrices,
   updateCategoryPrice,
   deleteCategoryPrice,
+  deleteCategoryPriceByEntryId,
   getAllData,
   getLiveSummary,
   getPriceDifference,
@@ -18,6 +19,7 @@ const router = express.Router();
 // Routes
 router.post('/', saveCategoryPrices);
 router.post('/mandi-prices', saveOrUpdateMandiCategoryPrices);
+router.delete('/prices/:documentId/:priceEntryId', deleteCategoryPriceByEntryId);
 router.patch('/:mandiId/:category/:subCategory', updateCategoryPrice);
 router.delete('/:mandiId/:category/:subCategory', deleteCategoryPrice);
 /** Live Rates home screen: filtered window + latest per mandi + states list (see controller for date rule). */

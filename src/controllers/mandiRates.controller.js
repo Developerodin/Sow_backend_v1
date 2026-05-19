@@ -10,6 +10,18 @@ const roundPrice2 = (n) => {
   return parseFloat(n.toFixed(2));
 };
 
+/** Latest MandiCategoryPrice row for a mandi (matches Market Rates table: newest updatedAt per mandi). */
+const getLatestMandiCategoryPrice = (mandiId) =>
+  MandiCategoryPrice.findOne({ mandi: mandiId }).sort({ updatedAt: -1 });
+
+const categoryPriceMatches = (cp, category, subCategory) => {
+  const norm = (v) => {
+    if (v == null || v === '' || v === 'null' || v === 'undefined') return null;
+    return String(v);
+  };
+  return cp.category === category && norm(cp.subCategory) === norm(subCategory);
+};
+
 // Save the entire array of categories with prices
 const saveCategoryPrices = async (req, res) => {
   try {
@@ -64,8 +76,14 @@ const updateCategoryPrice = async (req, res) => {
       });
     }
 
-    const mandiCategoryPrice = await MandiCategoryPrice.findOne({ mandi: mandiId });
-    const categoryPrice = mandiCategoryPrice.categoryPrices.find(cp => cp.category === category && cp.subCategory === subCategory);
+    const mandiCategoryPrice = await getLatestMandiCategoryPrice(mandiId);
+    if (!mandiCategoryPrice) {
+      return res.status(404).json({ message: 'Mandi not found' });
+    }
+
+    const categoryPrice = mandiCategoryPrice.categoryPrices.find((cp) =>
+      categoryPriceMatches(cp, category, subCategory)
+    );
 
     if (categoryPrice) {
       if (newPrice !== undefined) categoryPrice.price = newPrice;
@@ -80,32 +98,58 @@ const updateCategoryPrice = async (req, res) => {
   }
 };
 
+/** Delete one categoryPrices line by Mongo subdocument _id (exact row the UI shows). */
+const deleteCategoryPriceByEntryId = async (req, res) => {
+  try {
+    const { documentId, priceEntryId } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(documentId) || !mongoose.Types.ObjectId.isValid(priceEntryId)) {
+      return res.status(400).json({ message: 'Invalid document or price entry id' });
+    }
+
+    const mandiCategoryPrice = await MandiCategoryPrice.findById(documentId);
+    if (!mandiCategoryPrice) {
+      return res.status(404).json({ message: 'Mandi rates document not found' });
+    }
+
+    const entry = mandiCategoryPrice.categoryPrices.id(priceEntryId);
+    if (!entry) {
+      return res.status(404).json({ message: 'Price entry not found in this document' });
+    }
+
+    entry.remove();
+    await mandiCategoryPrice.save();
+
+    res.status(200).json({
+      message: 'Category price deleted successfully',
+      deletedEntryId: priceEntryId,
+      updatedMandiCategoryPrice: mandiCategoryPrice,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/** @deprecated Prefer DELETE /mandiRates/prices/:documentId/:priceEntryId */
 const deleteCategoryPrice = async (req, res) => {
   try {
     const { mandiId, category , subCategory } = req.params;
 
-    // Find the MandiCategoryPrice document by mandiId
-    const mandiCategoryPrice = await MandiCategoryPrice.findOne({ mandi: mandiId });
+    const mandiCategoryPrice = await getLatestMandiCategoryPrice(mandiId);
 
-    // If no MandiCategoryPrice is found, return a 404 error
     if (!mandiCategoryPrice) {
       return res.status(404).json({ message: 'Mandi not found' });
     }
 
-    // Find the index of the category to be deleted in the categoryPrices array
-    const categoryIndex = mandiCategoryPrice.categoryPrices.findIndex(
-      (cp) => cp.category === category && cp.subCategory === subCategory
+    const categoryIndex = mandiCategoryPrice.categoryPrices.findIndex((cp) =>
+      categoryPriceMatches(cp, category, subCategory)
     );
 
-    // If the category is not found, return a 404 error
     if (categoryIndex === -1) {
       return res.status(404).json({ message: 'Category not found' });
     }
 
-    // Remove the category from the categoryPrices array
     mandiCategoryPrice.categoryPrices.splice(categoryIndex, 1);
-
-    // Save the updated document
     await mandiCategoryPrice.save();
 
     res.status(200).json({
@@ -663,4 +707,17 @@ const getMandiByCategory = async (req, res) => {
   }
 };
 
-export {saveOrUpdateMandiCategoryPrices, saveCategoryPrices, updateCategoryPrice, deleteCategoryPrice, getAllData, getLiveSummary, getPriceDifference, getMandiHistory, getCategoryHistory, getHistoryByTimeframe, getMandiByCategory };
+export {
+  saveOrUpdateMandiCategoryPrices,
+  saveCategoryPrices,
+  updateCategoryPrice,
+  deleteCategoryPrice,
+  deleteCategoryPriceByEntryId,
+  getAllData,
+  getLiveSummary,
+  getPriceDifference,
+  getMandiHistory,
+  getCategoryHistory,
+  getHistoryByTimeframe,
+  getMandiByCategory,
+};
