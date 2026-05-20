@@ -6,6 +6,9 @@ import ApiError from '../utils/ApiError.js';
 import config from '../config/config.js';
 import logger from '../config/logger.js';
 import MarketRateParseJob from '../models/MarketRateParseJob.model.js';
+import Mandi from '../models/Mandi.model.js';
+import VectorEmbedding from '../models/VectorEmbedding.model.js';
+import { storeEmbedding } from '../services/vectorEmbedding.service.js';
 
 const buildParseSuccessPayload = (result) => {
   let messageText = '';
@@ -126,4 +129,56 @@ const getMarketRateParseJob = catchAsync(async (req, res) => {
   });
 });
 
-export { parseMarketRateMessage, getMarketRateParseJob };
+/**
+ * POST /v1/market-rates/seed-mandi-embeddings
+ * One-time (or periodic) utility: generates a VectorEmbedding for every Mandi that
+ * doesn't have one yet.  Call once after adding new mandis so the AI parser can find them.
+ */
+const seedMissingMandiEmbeddings = catchAsync(async (req, res) => {
+  const allMandis = await Mandi.find({
+    city: { $exists: true, $ne: null },
+    state: { $exists: true, $ne: 'Unknown' },
+  }).lean();
+
+  const existingEmbeddings = await VectorEmbedding.find({ type: 'mandi' })
+    .select('originalId')
+    .lean();
+  const embeddedIds = new Set(existingEmbeddings.map((e) => String(e.originalId)));
+
+  const missing = allMandis.filter((m) => !embeddedIds.has(String(m._id)));
+
+  if (missing.length === 0) {
+    return res.status(httpStatus.OK).json({
+      success: true,
+      message: 'All mandis already have embeddings.',
+      seeded: 0,
+      total: allMandis.length,
+    });
+  }
+
+  const results = { seeded: 0, failed: [] };
+
+  for (const mandi of missing) {
+    try {
+      await storeEmbedding({
+        type: 'mandi',
+        originalId: mandi._id,
+        text: mandi.mandiname || mandi.city,
+        metadata: { city: mandi.city, state: mandi.state },
+      });
+      results.seeded += 1;
+    } catch (err) {
+      results.failed.push({ mandiId: String(mandi._id), name: mandi.mandiname || mandi.city, error: err.message });
+    }
+  }
+
+  return res.status(httpStatus.OK).json({
+    success: true,
+    message: `Seeded ${results.seeded} of ${missing.length} missing mandi embeddings.`,
+    seeded: results.seeded,
+    failed: results.failed,
+    total: allMandis.length,
+  });
+});
+
+export { parseMarketRateMessage, getMarketRateParseJob, seedMissingMandiEmbeddings };
