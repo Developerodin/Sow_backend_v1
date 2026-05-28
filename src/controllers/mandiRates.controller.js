@@ -347,6 +347,214 @@ const getPriceDifference = async (req, res) => {
   }
 };
 
+const subCategoryKey = (value) => (value == null || value === '' ? '' : String(value));
+
+const categoryLineKey = (category, subCategory) =>
+  `${category}::${subCategoryKey(subCategory)}`;
+
+const parseIndianTimeToMinutes = (time) => {
+  if (!time || typeof time !== 'string') return null;
+  const match = time.trim().match(/^(0?[1-9]|1[0-2]):([0-5][0-9]) (AM|PM)$/i);
+  if (!match) return null;
+  let hours = parseInt(match[1], 10);
+  const minutes = parseInt(match[2], 10);
+  const period = match[3].toUpperCase();
+  if (period === 'PM' && hours !== 12) hours += 12;
+  if (period === 'AM' && hours === 12) hours = 0;
+  return hours * 60 + minutes;
+};
+
+/** Sortable timestamp for a categoryPrices line (date + optional Indian 12h time). */
+const getCategoryLineTimestamp = (cp) => {
+  const rawDate = cp?.date ?? cp?.createdAt;
+  if (!rawDate) return null;
+  const base = new Date(rawDate);
+  if (Number.isNaN(base.getTime())) return null;
+  const minutes = parseIndianTimeToMinutes(cp?.time);
+  if (minutes == null) return base;
+  const ts = new Date(base);
+  ts.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
+  return ts;
+};
+
+const toPlainCategoryPrice = (categoryPrice) =>
+  categoryPrice && typeof categoryPrice.toObject === 'function'
+    ? categoryPrice.toObject()
+    : { ...categoryPrice };
+
+/**
+ * Builds per-(category, subCategory) timelines from mandi docs, oldest-first, only lines in [from, to].
+ * @returns {Map<string, Array>}
+ */
+const buildWindowTimelinesByCategoryKey = (mandiDocs, from, to) => {
+  /** @type {Map<string, Array>} */
+  const timelines = new Map();
+
+  for (const doc of mandiDocs || []) {
+    for (const rawCp of doc.categoryPrices || []) {
+      const cp = toPlainCategoryPrice(rawCp);
+      const ts = getCategoryLineTimestamp(cp);
+      if (!ts || ts < from || ts > to) continue;
+
+      const key = categoryLineKey(cp.category, cp.subCategory);
+      if (!timelines.has(key)) {
+        timelines.set(key, []);
+      }
+      timelines.get(key).push({ ...cp, _sortTs: ts.getTime() });
+    }
+  }
+
+  for (const [key, entries] of timelines) {
+    entries.sort((a, b) => a._sortTs - b._sortTs);
+    timelines.set(key, entries);
+  }
+
+  return timelines;
+};
+
+/**
+ * Live-summary diff: previous row in window for same mandi + category + subCategory (by date/time).
+ * @returns {null | { difference: number, tag: 'Increment' | 'Decrement' }}
+ */
+const computeWindowPriceDifferenceForLine = (timeline, cp) => {
+  if (!timeline || timeline.length === 0) {
+    return null;
+  }
+
+  const cpTs = getCategoryLineTimestamp(cp)?.getTime();
+  let matchIdx = -1;
+
+  if (cpTs != null) {
+    for (let i = 0; i < timeline.length; i += 1) {
+      const row = timeline[i];
+      if (row._sortTs !== cpTs) continue;
+      if (
+        cp.price != null &&
+        row.price != null &&
+        roundPrice2(row.price) !== roundPrice2(cp.price)
+      ) {
+        continue;
+      }
+      matchIdx = i;
+    }
+  }
+
+  if (matchIdx === -1) {
+    for (let i = timeline.length - 1; i >= 0; i -= 1) {
+      if (cpTs == null || timeline[i]._sortTs <= cpTs) {
+        matchIdx = i;
+        break;
+      }
+    }
+  }
+
+  if (matchIdx <= 0) {
+    return null;
+  }
+
+  const currentPrice = roundPrice2(timeline[matchIdx].price);
+  const previousPrice = roundPrice2(timeline[matchIdx - 1].price);
+  const difference = roundPrice2(currentPrice - previousPrice);
+  const tag = difference > 0 ? 'Increment' : 'Decrement';
+
+  return { difference, tag };
+};
+
+/**
+ * Live-summary only: per categoryPrices[] line, window-scoped { difference, tag } | null.
+ */
+const enrichLiveSummaryWithWindowPriceDifferences = async (docs, from, to) => {
+  if (!docs || docs.length === 0) {
+    return [];
+  }
+
+  const bases = docs.map((doc) =>
+    typeof doc.toObject === 'function' ? doc.toObject() : { ...doc }
+  );
+
+  const mandiIdStrings = new Set();
+  for (const base of bases) {
+    if (!base.mandi) continue;
+    const rawId = base.mandi._id != null ? base.mandi._id : base.mandi;
+    if (rawId == null) continue;
+    mandiIdStrings.add(String(rawId));
+  }
+
+  /** @type {Map<string, Array>} */
+  const historyByMandiId = new Map();
+  if (mandiIdStrings.size > 0) {
+    const objectIds = [...mandiIdStrings]
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    if (objectIds.length > 0) {
+      const windowDocs = await MandiCategoryPrice.find({
+        mandi: { $in: objectIds },
+        $or: [{ updatedAt: { $gte: from } }, { 'categoryPrices.date': { $gte: from } }],
+      }).lean();
+
+      for (const row of windowDocs) {
+        const key = String(row.mandi);
+        if (!historyByMandiId.has(key)) {
+          historyByMandiId.set(key, []);
+        }
+        historyByMandiId.get(key).push(row);
+      }
+    }
+  }
+
+  return bases.map((base) => {
+    const mandiKey = base.mandi
+      ? String(base.mandi._id != null ? base.mandi._id : base.mandi)
+      : null;
+    const historyForMandi = mandiKey ? historyByMandiId.get(mandiKey) || [] : [];
+    const timelines = buildWindowTimelinesByCategoryKey(historyForMandi, from, to);
+
+    const updatedCategoryPrices = (base.categoryPrices || []).map((categoryPrice) => {
+      const cp = toPlainCategoryPrice(categoryPrice);
+      const timeline = timelines.get(categoryLineKey(cp.category, cp.subCategory)) || [];
+      const priceDifference = computeWindowPriceDifferenceForLine(timeline, cp);
+
+      return {
+        ...cp,
+        priceDifference,
+      };
+    });
+
+    return {
+      ...base,
+      categoryPrices: updatedCategoryPrices,
+    };
+  });
+};
+
+/**
+ * Optional server-side search for live-summary (line-level; same rates[] shape).
+ */
+const filterLiveSummaryBySearch = (rates, searchTerm) => {
+  const needle = searchTerm.trim().toLowerCase();
+  if (!needle) {
+    return rates;
+  }
+
+  return rates
+    .map((row) => {
+      const mandiName = (row.mandi?.mandiname || '').toLowerCase();
+      const state = (row.mandi?.state || '').toLowerCase();
+      const mandiMatches = mandiName.includes(needle) || state.includes(needle);
+
+      const categoryPrices = (row.categoryPrices || []).filter((cp) => {
+        if (mandiMatches) return true;
+        const category = (cp.category || '').toLowerCase();
+        const subCategory = (cp.subCategory || '').toLowerCase();
+        return category.includes(needle) || subCategory.includes(needle);
+      });
+
+      return { ...row, categoryPrices };
+    })
+    .filter((row) => (row.categoryPrices || []).length > 0);
+};
+
 /**
  * Enriches mandi rate documents with per-line priceDifference (same logic as legacy GET /mandiRates).
  * Uses one batched history load per unique mandi instead of one query per category line (fixes live-summary N+1).
@@ -514,7 +722,13 @@ const getLiveSummary = async (req, res) => {
 
     const rows = await MandiCategoryPrice.aggregate(pipeline);
 
-    const rates = await enrichMandiRatesWithPriceDifferences(rows);
+    let rates = await enrichLiveSummaryWithWindowPriceDifferences(rows, from, to);
+
+    const rawSearch = req.query.search;
+    const searchTerm = typeof rawSearch === 'string' ? rawSearch.trim() : '';
+    if (searchTerm) {
+      rates = filterLiveSummaryBySearch(rates, searchTerm);
+    }
 
     const stateSet = new Set();
     rates.forEach((row) => {

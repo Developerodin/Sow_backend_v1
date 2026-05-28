@@ -20,7 +20,7 @@ router.post('/', saveCategoryPrices);
 router.post('/mandi-prices', saveOrUpdateMandiCategoryPrices);
 router.patch('/:mandiId/:category/:subCategory', updateCategoryPrice);
 router.delete('/:mandiId/:category/:subCategory', deleteCategoryPrice);
-/** Live Rates home screen: filtered window + latest per mandi + states list (see controller for date rule). */
+/** Live Rates home screen: optional ?search=, window ?days=, per-line priceDifference (see controller). */
 router.get('/live-summary', getLiveSummary);
 router.get('/', getAllData);
 router.get('/difference/:mandiId/:category/:subCategory', getPriceDifference);
@@ -122,6 +122,65 @@ export default router;
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/MandiCategoryPrice'
+ *       "500":
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * /mandiRates/live-summary:
+ *   get:
+ *     summary: Live mandi rates summary
+ *     description: |
+ *       Latest rate document per mandi within a UTC rolling window.
+ *       Optional `search` filters category lines in-memory on the server (omitted or empty = no filter).
+ *       Each `categoryPrices[]` item includes `priceDifference` vs the previous line in the window for the same mandi, category, and subCategory (by date/time); oldest in range is `null`.
+ *     tags: [MandiRates]
+ *     parameters:
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: integer
+ *           minimum: 1
+ *           maximum: 90
+ *           default: 3
+ *         description: Rolling window length in days (UTC)
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Optional case-insensitive substring on mandi name, state, category, subCategory
+ *     responses:
+ *       "200":
+ *         description: Live summary retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 rates:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/MandiCategoryPrice'
+ *                 statesWithRates:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 window:
+ *                   type: object
+ *                   properties:
+ *                     days:
+ *                       type: integer
+ *                     from:
+ *                       type: string
+ *                       format: date-time
+ *                     to:
+ *                       type: string
+ *                       format: date-time
+ *                     timezone:
+ *                       type: string
+ *                     relevance:
+ *                       type: string
  *       "500":
  *         $ref: '#/components/responses/ServerError'
  */
