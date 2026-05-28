@@ -30,6 +30,7 @@ Rules:
 7. Infer unit (default: "Ton" for bulk commodities, "Kg" for smaller quantities like "Rolling 9Kg")
 8. Handle variations in mandi names (e.g., "Mandi Gobindgarh" = "Gobindgarh", remove "Mandi" prefix if present)
 9. Handle category variations (e.g., "M.S Ingot" = "MS Ingot", "M.S" = "MS", "Finish Goods" = "FINISH GOODS")
+10. CRITICAL — Preserve variant suffixes like (W), (S), (F), (M), (Steel Grade), (Foundry Grade), etc. exactly as they appear in the subcategory name. These are NOT price-difference indicators — they denote a specific product variant. "Copper Armature Plant (W)" must be stored as subCategory "Copper Armature Plant (W)", NOT as "Copper Armature Plant". Only parentheses that contain a sign (+/-) and a number are price differences (e.g. (+100), (-50)).
 
 EXAMPLE STRUCTURE:
 If you see:

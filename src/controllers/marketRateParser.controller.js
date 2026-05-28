@@ -6,19 +6,28 @@ import ApiError from '../utils/ApiError.js';
 import config from '../config/config.js';
 import logger from '../config/logger.js';
 import MarketRateParseJob from '../models/MarketRateParseJob.model.js';
+import Mandi from '../models/Mandi.model.js';
+import VectorEmbedding from '../models/VectorEmbedding.model.js';
+import { storeEmbedding } from '../services/vectorEmbedding.service.js';
 
 const buildParseSuccessPayload = (result) => {
   let messageText = '';
   const matchedMandisCount = result.created?.mandis?.length || 0;
+  const failedCount = Array.isArray(result.failed) ? result.failed.length : 0;
 
   if (result.updated.mandiCategoryPrices > 0) {
     messageText = `Market rates added successfully. ${result.updated.mandiCategoryPrices} price${result.updated.mandiCategoryPrices === 1 ? '' : 's'} added`;
     if (matchedMandisCount > 0) {
       messageText += `. Matched ${matchedMandisCount} mandi${matchedMandisCount === 1 ? '' : 's'}`;
     }
+    if (failedCount > 0) {
+      messageText += `. ${failedCount} rate${failedCount === 1 ? '' : 's'} failed validation`;
+    }
   } else {
     messageText = 'Message parsed but no rates were added to database';
-    if (result.warnings && result.warnings.length > 0) {
+    if (failedCount > 0) {
+      messageText += `. ${failedCount} rate${failedCount === 1 ? '' : 's'} failed validation`;
+    } else if (result.warnings && result.warnings.length > 0) {
       messageText += `. ${result.warnings.length} warning${result.warnings.length === 1 ? '' : 's'} generated`;
     }
   }
@@ -120,4 +129,56 @@ const getMarketRateParseJob = catchAsync(async (req, res) => {
   });
 });
 
-export { parseMarketRateMessage, getMarketRateParseJob };
+/**
+ * POST /v1/market-rates/seed-mandi-embeddings
+ * One-time (or periodic) utility: generates a VectorEmbedding for every Mandi that
+ * doesn't have one yet.  Call once after adding new mandis so the AI parser can find them.
+ */
+const seedMissingMandiEmbeddings = catchAsync(async (req, res) => {
+  const allMandis = await Mandi.find({
+    city: { $exists: true, $ne: null },
+    state: { $exists: true, $ne: 'Unknown' },
+  }).lean();
+
+  const existingEmbeddings = await VectorEmbedding.find({ type: 'mandi' })
+    .select('originalId')
+    .lean();
+  const embeddedIds = new Set(existingEmbeddings.map((e) => String(e.originalId)));
+
+  const missing = allMandis.filter((m) => !embeddedIds.has(String(m._id)));
+
+  if (missing.length === 0) {
+    return res.status(httpStatus.OK).json({
+      success: true,
+      message: 'All mandis already have embeddings.',
+      seeded: 0,
+      total: allMandis.length,
+    });
+  }
+
+  const results = { seeded: 0, failed: [] };
+
+  for (const mandi of missing) {
+    try {
+      await storeEmbedding({
+        type: 'mandi',
+        originalId: mandi._id,
+        text: mandi.mandiname || mandi.city,
+        metadata: { city: mandi.city, state: mandi.state },
+      });
+      results.seeded += 1;
+    } catch (err) {
+      results.failed.push({ mandiId: String(mandi._id), name: mandi.mandiname || mandi.city, error: err.message });
+    }
+  }
+
+  return res.status(httpStatus.OK).json({
+    success: true,
+    message: `Seeded ${results.seeded} of ${missing.length} missing mandi embeddings.`,
+    seeded: results.seeded,
+    failed: results.failed,
+    total: allMandis.length,
+  });
+});
+
+export { parseMarketRateMessage, getMarketRateParseJob, seedMissingMandiEmbeddings };
