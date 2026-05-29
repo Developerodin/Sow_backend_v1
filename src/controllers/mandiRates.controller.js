@@ -599,6 +599,51 @@ const filterLiveSummaryBySearch = (rates, searchTerm) => {
     .filter((row) => (row.categoryPrices || []).length > 0);
 };
 
+/** Distinct non-empty strings; first DB casing wins; sorted for stable chip lists. */
+const collectDistinctDisplayStrings = (values) => {
+  const seen = new Map();
+  for (const raw of values) {
+    if (typeof raw !== 'string') continue;
+    const trimmed = raw.trim();
+    if (!trimmed) continue;
+    const key = trimmed.toLowerCase();
+    if (!seen.has(key)) {
+      seen.set(key, trimmed);
+    }
+  }
+  return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+};
+
+/**
+ * Chip metadata from final live-summary rates (after optional search).
+ * @returns {{ statesWithRates: string[], categoriesWithRates: string[], subCategoriesWithRates: string[] }}
+ */
+const buildLiveSummaryChipMetadata = (rates) => {
+  const states = [];
+  const categories = [];
+  const subCategories = [];
+
+  for (const row of rates || []) {
+    if (row.mandi?.state) {
+      states.push(row.mandi.state);
+    }
+    for (const cp of row.categoryPrices || []) {
+      if (cp.category) {
+        categories.push(cp.category);
+      }
+      if (cp.subCategory != null && String(cp.subCategory).trim() !== '') {
+        subCategories.push(String(cp.subCategory));
+      }
+    }
+  }
+
+  return {
+    statesWithRates: collectDistinctDisplayStrings(states),
+    categoriesWithRates: collectDistinctDisplayStrings(categories),
+    subCategoriesWithRates: collectDistinctDisplayStrings(subCategories),
+  };
+};
+
 /**
  * Enriches mandi rate documents with per-line priceDifference (same logic as legacy GET /mandiRates).
  * Uses one batched history load per unique mandi instead of one query per category line (fixes live-summary N+1).
@@ -774,18 +819,14 @@ const getLiveSummary = async (req, res) => {
       rates = filterLiveSummaryBySearch(rates, searchTerm);
     }
 
-    const stateSet = new Set();
-    rates.forEach((row) => {
-      const state = row.mandi && row.mandi.state;
-      if (typeof state === 'string' && state.trim() !== '') {
-        stateSet.add(state.trim());
-      }
-    });
-    const statesWithRates = Array.from(stateSet).sort((a, b) => a.localeCompare(b));
+    const { statesWithRates, categoriesWithRates, subCategoriesWithRates } =
+      buildLiveSummaryChipMetadata(rates);
 
     res.status(200).json({
       rates,
       statesWithRates,
+      categoriesWithRates,
+      subCategoriesWithRates,
       window: {
         days,
         from: from.toISOString(),

@@ -135,7 +135,8 @@ export default router;
  *     summary: Live mandi rates summary
  *     description: |
  *       Latest rate document per mandi within a UTC rolling window.
- *       Optional `search` filters category lines in-memory on the server (omitted or empty = no filter).
+ *       Optional `search` filters category lines on the server (omitted or empty = no filter).
+ *       Chip lists (`statesWithRates`, `categoriesWithRates`, `subCategoriesWithRates`) are derived from the final filtered `rates` (narrowed when search is present).
  *       Each `categoryPrices[]` item includes `priceDifference` vs the previous line in the window for the same mandi, category, and subCategory (by date/time); oldest in range is `null`.
  *     tags: [MandiRates]
  *     parameters:
@@ -165,6 +166,14 @@ export default router;
  *                   items:
  *                     $ref: '#/components/schemas/MandiCategoryPrice'
  *                 statesWithRates:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 categoriesWithRates:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 subCategoriesWithRates:
  *                   type: array
  *                   items:
  *                     type: string
