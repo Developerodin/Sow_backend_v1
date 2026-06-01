@@ -466,38 +466,43 @@ const computeWindowPriceDifferenceForLine = (timeline, cp) => {
   }
 
   const cpTs = getCategoryLineTimestamp(cp)?.getTime();
-  let matchIdx = -1;
-
-  if (cpTs != null) {
-    for (let i = 0; i < timeline.length; i += 1) {
-      const row = timeline[i];
-      if (row._sortTs !== cpTs) continue;
-      if (
-        cp.price != null &&
-        row.price != null &&
-        roundPrice2(row.price) !== roundPrice2(cp.price)
-      ) {
-        continue;
-      }
-      matchIdx = i;
-    }
-  }
-
-  if (matchIdx === -1) {
-    for (let i = timeline.length - 1; i >= 0; i -= 1) {
-      if (cpTs == null || timeline[i]._sortTs <= cpTs) {
-        matchIdx = i;
-        break;
-      }
-    }
-  }
-
-  if (matchIdx <= 0) {
+  if (cpTs == null) {
     return null;
   }
 
-  const currentPrice = roundPrice2(timeline[matchIdx].price);
-  const previousPrice = roundPrice2(timeline[matchIdx - 1].price);
+  const idx = timeline.findIndex(
+    (row) =>
+      row._sortTs === cpTs &&
+      (cp.price == null ||
+        row.price == null ||
+        roundPrice2(row.price) === roundPrice2(cp.price))
+  );
+
+  let currentPrice;
+  let previousPrice;
+
+  if (idx >= 0) {
+    if (idx === 0) {
+      return null;
+    }
+    currentPrice = roundPrice2(timeline[idx].price);
+    previousPrice = roundPrice2(timeline[idx - 1].price);
+  } else {
+    // Line not matched in timeline (timestamp drift): compare cp to last row strictly before cpTs
+    let prevIdx = -1;
+    for (let i = timeline.length - 1; i >= 0; i -= 1) {
+      if (timeline[i]._sortTs < cpTs) {
+        prevIdx = i;
+        break;
+      }
+    }
+    if (prevIdx < 0) {
+      return null;
+    }
+    currentPrice = roundPrice2(cp.price);
+    previousPrice = roundPrice2(timeline[prevIdx].price);
+  }
+
   const difference = roundPrice2(currentPrice - previousPrice);
   const tag = difference > 0 ? 'Increment' : 'Decrement';
 
@@ -570,6 +575,62 @@ const enrichLiveSummaryWithWindowPriceDifferences = async (docs, from, to) => {
       categoryPrices: updatedCategoryPrices,
     };
   });
+};
+
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Admin GET /mandiRates — optional ?search= (line-level; same document[] shape).
+ * Separate from live-summary so app behaviour stays unchanged when search is omitted.
+ */
+const filterAdminMandiRatesBySearch = (docs, searchTerm) => {
+  const needle = searchTerm.trim().toLowerCase();
+  if (!needle) {
+    return docs;
+  }
+
+  return docs
+    .map((row) => {
+      const mandiName = (row.mandi?.mandiname || '').toLowerCase();
+      const state = (row.mandi?.state || '').toLowerCase();
+      const city = (row.mandi?.city || '').toLowerCase();
+      const mandiMatches =
+        mandiName.includes(needle) || state.includes(needle) || city.includes(needle);
+
+      const categoryPrices = (row.categoryPrices || []).filter((cp) => {
+        if (mandiMatches) return true;
+        const category = (cp.category || '').toLowerCase();
+        const subCategory = (cp.subCategory || '').toLowerCase();
+        return category.includes(needle) || subCategory.includes(needle);
+      });
+
+      return { ...row, categoryPrices };
+    })
+    .filter((row) => (row.categoryPrices || []).length > 0);
+};
+
+/** Mongo pre-filter for admin search (mandi fields + category line fields). */
+const buildAdminMandiRatesSearchQuery = async (searchTerm) => {
+  const trimmed = searchTerm.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const regex = new RegExp(escapeRegex(trimmed), 'i');
+  const matchingMandis = await Mandi.find({
+    $or: [{ mandiname: regex }, { state: regex }, { city: regex }],
+  })
+    .select('_id')
+    .lean();
+  const mandiIds = matchingMandis.map((m) => m._id);
+
+  const orClauses = [
+    ...(mandiIds.length > 0 ? [{ mandi: { $in: mandiIds } }] : []),
+    { 'categoryPrices.category': regex },
+    { 'categoryPrices.subCategory': regex },
+  ];
+
+  return orClauses.length > 0 ? { $or: orClauses } : null;
 };
 
 /**
@@ -841,11 +902,28 @@ const getLiveSummary = async (req, res) => {
   }
 };
 
-// Get all data
+// Get all data (admin table). Optional ?search= — omitted or empty returns full dataset.
 const getAllData = async (req, res) => {
   try {
-    const data = await MandiCategoryPrice.find().populate('mandi');
-    const updatedData = await enrichMandiRatesWithPriceDifferences(data);
+    const rawSearch = req.query.search;
+    const searchTerm = typeof rawSearch === 'string' ? rawSearch.trim() : '';
+
+    let query = {};
+    if (searchTerm) {
+      const searchQuery = await buildAdminMandiRatesSearchQuery(searchTerm);
+      if (!searchQuery) {
+        return res.status(200).json([]);
+      }
+      query = searchQuery;
+    }
+
+    const data = await MandiCategoryPrice.find(query).populate('mandi');
+    let updatedData = await enrichMandiRatesWithPriceDifferences(data);
+
+    if (searchTerm) {
+      updatedData = filterAdminMandiRatesBySearch(updatedData, searchTerm);
+    }
+
     res.status(200).json(updatedData);
   } catch (error) {
     res.status(500).json({ error: error.message });

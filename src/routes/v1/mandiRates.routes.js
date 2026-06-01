@@ -113,8 +113,17 @@ export default router;
  *
  *   get:
  *     summary: Get all Mandi rates data
- *     description: Retrieve all Mandi rates data.
+ *     description: |
+ *       Retrieve all Mandi rates data for the admin Market Rates table.
+ *       Optional `search` filters on the server (mandi name, state, city, category, subCategory).
+ *       Omitted or empty `search` returns the full dataset — same behaviour as before search was added.
  *     tags: [MandiRates]
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Optional case-insensitive substring filter (admin only; does not apply to live-summary)
  *     responses:
  *       "200":
  *         description: List of all Mandi rates data
