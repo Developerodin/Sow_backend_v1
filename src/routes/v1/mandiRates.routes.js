@@ -146,7 +146,7 @@ export default router;
  *       Latest rate document per mandi within an IST calendar-day window.
  *       Optional `search` filters category lines on the server (omitted or empty = no filter).
  *       Chip lists (`statesWithRates`, `categoriesWithRates`, `subCategoriesWithRates`) are derived from the final filtered `rates` (narrowed when search is present).
- *       Each `categoryPrices[]` item includes `priceDifference` vs the previous line in the window for the same mandi, category, and subCategory (by date/time); oldest in range is `null`.
+ *       Each `categoryPrices[]` item includes `priceDifference` vs the immediately previous chronological entry (IST date+time) for the same mandi, category, and subCategory; oldest entry is `null`.
  *     tags: [MandiRates]
  *     parameters:
  *       - in: query

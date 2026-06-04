@@ -434,11 +434,38 @@ const toPlainCategoryPrice = (categoryPrice) =>
     ? categoryPrice.toObject()
     : { ...categoryPrice };
 
+const MANDI_RATE_DIFF_DEBUG = process.env.MANDI_LIVE_SUMMARY_DIFF_DEBUG === '1';
+
+const logMandiRateDiff = (payload) => {
+  if (MANDI_RATE_DIFF_DEBUG) {
+    console.log('[mandiRateDiff]', JSON.stringify(payload));
+  }
+};
+
+const formatLineForDiffLog = (row, parentUpdatedAt) => {
+  const at = getCategoryLineTimestamp(row, parentUpdatedAt);
+  return {
+    id: row._id != null ? String(row._id) : null,
+    date: row.date ?? null,
+    time: row.time ?? null,
+    at: at && !Number.isNaN(at.getTime()) ? at.toISOString() : null,
+    price: row.price,
+  };
+};
+
+const compareTimelineEntries = (a, b) => {
+  if (a._sortTs !== b._sortTs) return a._sortTs - b._sortTs;
+  const ca = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+  const cb = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+  if (ca !== cb) return ca - cb;
+  return String(a._id || '').localeCompare(String(b._id || ''));
+};
+
 /**
- * Builds per-(category, subCategory) timelines from mandi docs, oldest-first, only lines in [from, to].
+ * Builds per-(category, subCategory) timelines from all mandi docs, oldest-first (full datetime order).
  * @returns {Map<string, Array>}
  */
-const buildWindowTimelinesByCategoryKey = (mandiDocs, from, to) => {
+const buildCategoryTimelinesByKey = (mandiDocs) => {
   /** @type {Map<string, Array>} */
   const timelines = new Map();
 
@@ -447,18 +474,22 @@ const buildWindowTimelinesByCategoryKey = (mandiDocs, from, to) => {
     for (const rawCp of doc.categoryPrices || []) {
       const cp = toPlainCategoryPrice(rawCp);
       const ts = getCategoryLineTimestamp(cp, parentUpdatedAt);
-      if (!ts || ts < from || ts > to) continue;
+      if (!ts || Number.isNaN(ts.getTime())) continue;
 
       const key = categoryLineKey(cp.category, cp.subCategory);
       if (!timelines.has(key)) {
         timelines.set(key, []);
       }
-      timelines.get(key).push({ ...cp, _sortTs: ts.getTime() });
+      timelines.get(key).push({
+        ...cp,
+        _sortTs: ts.getTime(),
+        _parentUpdatedAt: parentUpdatedAt,
+      });
     }
   }
 
   for (const [key, entries] of timelines) {
-    entries.sort((a, b) => a._sortTs - b._sortTs);
+    entries.sort(compareTimelineEntries);
     timelines.set(key, entries);
   }
 
@@ -466,10 +497,55 @@ const buildWindowTimelinesByCategoryKey = (mandiDocs, from, to) => {
 };
 
 /**
- * Live-summary diff: previous row in window for same mandi + category + subCategory (by date/time).
- * @returns {null | { difference: number, tag: 'Increment' | 'Decrement' }}
+ * Locate a price line on the chronological timeline (Mongo subdocument _id when available).
  */
-const computeWindowPriceDifferenceForLine = (timeline, cp, parentUpdatedAt) => {
+const findTimelineIndexForLine = (timeline, cp, parentUpdatedAt) => {
+  if (!timeline?.length || !cp) return -1;
+
+  if (cp._id != null) {
+    const idStr = String(cp._id);
+    const byId = timeline.findIndex((row) => row._id != null && String(row._id) === idStr);
+    if (byId >= 0) return byId;
+  }
+
+  const cpTs = getCategoryLineTimestamp(cp, parentUpdatedAt)?.getTime();
+  if (cpTs == null) return -1;
+
+  const cpTime = (cp.time || '').trim();
+  const cpPrice = roundPrice2(cp.price);
+
+  const sameInstant = timeline
+    .map((row, index) => ({ row, index }))
+    .filter(({ row }) => row._sortTs === cpTs);
+
+  if (sameInstant.length === 1) {
+    return sameInstant[0].index;
+  }
+  if (sameInstant.length > 1) {
+    const exact = sameInstant.find(
+      ({ row }) =>
+        roundPrice2(row.price) === cpPrice && (row.time || '').trim() === cpTime
+    );
+    if (exact) return exact.index;
+    const byCreated = [...sameInstant].sort(
+      (a, b) => compareTimelineEntries(a.row, b.row)
+    );
+    return byCreated[byCreated.length - 1].index;
+  }
+
+  return -1;
+};
+
+/**
+ * Live-summary diff: current line vs immediately previous chronological entry (any day).
+ * @returns {null | { difference: number, tag: 'Increment' | 'Decrement' | 'Unchanged' }}
+ */
+const computeChronologicalPriceDifferenceForLine = (
+  timeline,
+  cp,
+  parentUpdatedAt,
+  logContext = {}
+) => {
   if (!timeline || timeline.length === 0) {
     return null;
   }
@@ -479,25 +555,17 @@ const computeWindowPriceDifferenceForLine = (timeline, cp, parentUpdatedAt) => {
     return null;
   }
 
-  const idx = timeline.findIndex(
-    (row) =>
-      row._sortTs === cpTs &&
-      (cp.price == null ||
-        row.price == null ||
-        roundPrice2(row.price) === roundPrice2(cp.price))
-  );
-
-  let currentPrice;
-  let previousPrice;
+  let idx = findTimelineIndexForLine(timeline, cp, parentUpdatedAt);
+  let currentRow = cp;
+  let previousRow;
 
   if (idx >= 0) {
     if (idx === 0) {
       return null;
     }
-    currentPrice = roundPrice2(timeline[idx].price);
-    previousPrice = roundPrice2(timeline[idx - 1].price);
+    currentRow = timeline[idx];
+    previousRow = timeline[idx - 1];
   } else {
-    // Line not matched in timeline (timestamp drift): compare cp to last row strictly before cpTs
     let prevIdx = -1;
     for (let i = timeline.length - 1; i >= 0; i -= 1) {
       if (timeline[i]._sortTs < cpTs) {
@@ -508,20 +576,33 @@ const computeWindowPriceDifferenceForLine = (timeline, cp, parentUpdatedAt) => {
     if (prevIdx < 0) {
       return null;
     }
-    currentPrice = roundPrice2(cp.price);
-    previousPrice = roundPrice2(timeline[prevIdx].price);
+    previousRow = timeline[prevIdx];
   }
 
+  const currentPrice = roundPrice2(currentRow.price ?? cp.price);
+  const previousPrice = roundPrice2(previousRow.price);
   const difference = roundPrice2(currentPrice - previousPrice);
-  const tag = difference > 0 ? 'Increment' : 'Decrement';
+  const tag =
+    difference > 0 ? 'Increment' : difference < 0 ? 'Decrement' : 'Unchanged';
+
+  logMandiRateDiff({
+    ...logContext,
+    current: formatLineForDiffLog(currentRow, parentUpdatedAt),
+    previous: formatLineForDiffLog(
+      previousRow,
+      previousRow._parentUpdatedAt ?? parentUpdatedAt
+    ),
+    difference,
+    tag,
+  });
 
   return { difference, tag };
 };
 
 /**
- * Live-summary only: per categoryPrices[] line, window-scoped { difference, tag } | null.
+ * Live-summary only: per categoryPrices[] line, diff vs immediately previous chronological entry.
  */
-const enrichLiveSummaryWithWindowPriceDifferences = async (docs, from, to) => {
+const enrichLiveSummaryWithWindowPriceDifferences = async (docs) => {
   if (!docs || docs.length === 0) {
     return [];
   }
@@ -546,12 +627,11 @@ const enrichLiveSummaryWithWindowPriceDifferences = async (docs, from, to) => {
       .map((id) => new mongoose.Types.ObjectId(id));
 
     if (objectIds.length > 0) {
-      const windowDocs = await MandiCategoryPrice.find({
+      const allMandiDocs = await MandiCategoryPrice.find({
         mandi: { $in: objectIds },
-        $or: [{ updatedAt: { $gte: from } }, { 'categoryPrices.date': { $gte: from } }],
       }).lean();
 
-      for (const row of windowDocs) {
+      for (const row of allMandiDocs) {
         const key = String(row.mandi);
         if (!historyByMandiId.has(key)) {
           historyByMandiId.set(key, []);
@@ -566,13 +646,23 @@ const enrichLiveSummaryWithWindowPriceDifferences = async (docs, from, to) => {
       ? String(base.mandi._id != null ? base.mandi._id : base.mandi)
       : null;
     const historyForMandi = mandiKey ? historyByMandiId.get(mandiKey) || [] : [];
-    const timelines = buildWindowTimelinesByCategoryKey(historyForMandi, from, to);
+    const timelines = buildCategoryTimelinesByKey(historyForMandi);
 
     const parentUpdatedAt = base.updatedAt || base.createdAt;
+    const mandiName = base.mandi?.mandiname ?? mandiKey;
     const updatedCategoryPrices = (base.categoryPrices || []).map((categoryPrice) => {
       const cp = toPlainCategoryPrice(categoryPrice);
       const timeline = timelines.get(categoryLineKey(cp.category, cp.subCategory)) || [];
-      const priceDifference = computeWindowPriceDifferenceForLine(timeline, cp, parentUpdatedAt);
+      const priceDifference = computeChronologicalPriceDifferenceForLine(
+        timeline,
+        cp,
+        parentUpdatedAt,
+        {
+          mandi: mandiName,
+          category: cp.category,
+          subCategory: cp.subCategory,
+        }
+      );
 
       return {
         ...cp,
@@ -952,7 +1042,7 @@ const getLiveSummary = async (req, res) => {
 
     const rows = await MandiCategoryPrice.aggregate(pipeline);
 
-    let rates = await enrichLiveSummaryWithWindowPriceDifferences(rows, from, to);
+    let rates = await enrichLiveSummaryWithWindowPriceDifferences(rows);
 
     rates = rates
       .map((row) => ({
