@@ -1,6 +1,7 @@
 import mongoose from 'mongoose';
 import MandiCategoryPrice from '../models/MandiRates.model.js';
 import Mandi from '../models/Mandi.model.js';
+import SubCategory from '../models/subCategory.modal.js';
 import Notification from '../models/b2bNotification.js';
 import { sendNotificationToAllUsers } from './pushNotifications.controller.js';
 
@@ -738,6 +739,73 @@ const collectDistinctDisplayStrings = (values) => {
   return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
 };
 
+const normalizeLiveSummarySubName = (str) => {
+  if (str == null || str === '') return '';
+  return String(str)
+    .toLowerCase()
+    .normalize('NFKC')
+    .replace(/\./g, '')
+    .replace(/["'`´''""]/g, '')
+    .replace(/\binch\b/gi, '')
+    .replace(/\bcutting\b/gi, 'cut')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+/**
+ * Match mandi price-line subcategory label to SubCategory catalog (handles End Cut / End Cutting).
+ */
+const findSubCategoryDocForDisplayName = (displayName, allSubs) => {
+  const needle = normalizeLiveSummarySubName(displayName);
+  if (!needle || !Array.isArray(allSubs)) return null;
+
+  const exact = allSubs.find(
+    (s) => normalizeLiveSummarySubName(s?.name) === needle
+  );
+  if (exact) return exact;
+
+  let best = null;
+  let bestOverlap = 0;
+  for (const sub of allSubs) {
+    const key = normalizeLiveSummarySubName(sub?.name);
+    if (!key) continue;
+    if (key === needle) return sub;
+    if (key.includes(needle) || needle.includes(key)) {
+      const overlap = Math.min(key.length, needle.length);
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap;
+        best = sub;
+      }
+    }
+  }
+  return best;
+};
+
+/**
+ * Attach catalog image fields for chip names shown during search.
+ */
+const buildLiveSummarySubcategoryMeta = async (displayNames) => {
+  const names = Array.isArray(displayNames) ? displayNames : [];
+  if (names.length === 0) return [];
+
+  const allSubs = await SubCategory.find()
+    .select('name image imageKey')
+    .lean();
+
+  return names.map((name) => {
+    const match = findSubCategoryDocForDisplayName(name, allSubs);
+    if (!match) {
+      return { name, _id: null, image: null, imageKey: null };
+    }
+    return {
+      name,
+      _id: match._id,
+      image: match.image ?? null,
+      imageKey: match.imageKey ?? null,
+    };
+  });
+};
+
 /**
  * Chip metadata from final live-summary rates (after optional search).
  * @returns {{ statesWithRates: string[], categoriesWithRates: string[], subCategoriesWithRates: string[] }}
@@ -960,11 +1028,16 @@ const getLiveSummary = async (req, res) => {
     const { statesWithRates, categoriesWithRates, subCategoriesWithRates } =
       buildLiveSummaryChipMetadata(rates);
 
+    const subCategoriesMeta = await buildLiveSummarySubcategoryMeta(
+      subCategoriesWithRates
+    );
+
     res.status(200).json({
       rates,
       statesWithRates,
       categoriesWithRates,
       subCategoriesWithRates,
+      subCategoriesMeta,
       window: {
         days,
         from: from.toISOString(),
