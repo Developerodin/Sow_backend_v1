@@ -143,7 +143,7 @@ export default router;
  *   get:
  *     summary: Live mandi rates summary
  *     description: |
- *       Latest rate document per mandi within a UTC rolling window.
+ *       Latest rate document per mandi within an IST calendar-day window.
  *       Optional `search` filters category lines on the server (omitted or empty = no filter).
  *       Chip lists (`statesWithRates`, `categoriesWithRates`, `subCategoriesWithRates`) are derived from the final filtered `rates` (narrowed when search is present).
  *       Each `categoryPrices[]` item includes `priceDifference` vs the previous line in the window for the same mandi, category, and subCategory (by date/time); oldest in range is `null`.
@@ -156,7 +156,7 @@ export default router;
  *           minimum: 1
  *           maximum: 90
  *           default: 3
- *         description: Rolling window length in days (UTC)
+ *         description: Number of IST calendar days including today (default 3)
  *       - in: query
  *         name: search
  *         schema:

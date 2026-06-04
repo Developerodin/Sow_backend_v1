@@ -4,6 +4,10 @@ import Mandi from '../models/Mandi.model.js';
 import SubCategory from '../models/subCategory.modal.js';
 import Notification from '../models/b2bNotification.js';
 import { sendNotificationToAllUsers } from './pushNotifications.controller.js';
+import {
+  computeAtFromLine,
+  getLiveSummaryAtRange,
+} from '../services/mandiPricePoint.service.js';
 
 /** Two-decimal rounding for prices/deltas in API JSON (avoids float artifacts e.g. -0.699999999999993). */
 const roundPrice2 = (n) => {
@@ -407,81 +411,21 @@ const subCategoryKey = (value) => (value == null || value === '' ? '' : String(v
 const categoryLineKey = (category, subCategory) =>
   `${category}::${subCategoryKey(subCategory)}`;
 
-const parseIndianTimeToMinutes = (time) => {
-  if (!time || typeof time !== 'string') return null;
-  const match = time.trim().match(/^(0?[1-9]|1[0-2]):([0-5][0-9]) (AM|PM)$/i);
-  if (!match) return null;
-  let hours = parseInt(match[1], 10);
-  const minutes = parseInt(match[2], 10);
-  const period = match[3].toUpperCase();
-  if (period === 'PM' && hours !== 12) hours += 12;
-  if (period === 'AM' && hours === 12) hours = 0;
-  return hours * 60 + minutes;
-};
+/** Sortable instant for a price line (IST calendar date + optional Indian 12h time). */
+const getCategoryLineTimestamp = (cp, parentUpdatedAt) =>
+  computeAtFromLine(
+    {
+      date: cp?.date ?? cp?.createdAt,
+      time: cp?.time,
+      lineUpdatedAt: cp?.updatedAt,
+    },
+    parentUpdatedAt
+  );
 
-/**
- * Calendar-day parsing for mandi price dates (avoids UTC midnight shifting the day).
- * Mirrors mobile `parseMandiPriceCalendarDate`.
- */
-const parseMandiCalendarDate = (rawDate) => {
-  if (rawDate == null || rawDate === '') return null;
-  if (rawDate instanceof Date) {
-    if (Number.isNaN(rawDate.getTime())) return null;
-    return new Date(
-      rawDate.getFullYear(),
-      rawDate.getMonth(),
-      rawDate.getDate(),
-      12,
-      0,
-      0,
-      0
-    );
-  }
-  const s = String(rawDate).trim();
-  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (iso) {
-    return new Date(
-      parseInt(iso[1], 10),
-      parseInt(iso[2], 10) - 1,
-      parseInt(iso[3], 10),
-      12,
-      0,
-      0,
-      0
-    );
-  }
-  const dmy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
-  if (dmy) {
-    return new Date(
-      parseInt(dmy[3], 10),
-      parseInt(dmy[2], 10) - 1,
-      parseInt(dmy[1], 10),
-      12,
-      0,
-      0,
-      0
-    );
-  }
-  const parsed = new Date(s);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
-};
-
-/** Sortable timestamp for a categoryPrices line (date + optional Indian 12h time). */
-const getCategoryLineTimestamp = (cp) => {
-  const rawDate = cp?.date ?? cp?.createdAt;
-  const base = parseMandiCalendarDate(rawDate);
-  if (!base) return null;
-  const minutes = parseIndianTimeToMinutes(cp?.time);
-  if (minutes == null) return base;
-  const ts = new Date(base);
-  ts.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
-  return ts;
-};
-
-/** Keep only price lines whose date/time falls in the live-summary rolling window. */
-const filterCategoryPricesToWindow = (categoryPrices, from, to) =>
+/** Keep only price lines whose date/time falls in the live-summary IST window. */
+const filterCategoryPricesToWindow = (categoryPrices, from, to, parentUpdatedAt) =>
   (categoryPrices || []).filter((cp) => {
-    const ts = getCategoryLineTimestamp(cp);
+    const ts = getCategoryLineTimestamp(cp, parentUpdatedAt);
     return ts && ts >= from && ts <= to;
   });
 
@@ -499,9 +443,10 @@ const buildWindowTimelinesByCategoryKey = (mandiDocs, from, to) => {
   const timelines = new Map();
 
   for (const doc of mandiDocs || []) {
+    const parentUpdatedAt = doc.updatedAt || doc.createdAt;
     for (const rawCp of doc.categoryPrices || []) {
       const cp = toPlainCategoryPrice(rawCp);
-      const ts = getCategoryLineTimestamp(cp);
+      const ts = getCategoryLineTimestamp(cp, parentUpdatedAt);
       if (!ts || ts < from || ts > to) continue;
 
       const key = categoryLineKey(cp.category, cp.subCategory);
@@ -524,12 +469,12 @@ const buildWindowTimelinesByCategoryKey = (mandiDocs, from, to) => {
  * Live-summary diff: previous row in window for same mandi + category + subCategory (by date/time).
  * @returns {null | { difference: number, tag: 'Increment' | 'Decrement' }}
  */
-const computeWindowPriceDifferenceForLine = (timeline, cp) => {
+const computeWindowPriceDifferenceForLine = (timeline, cp, parentUpdatedAt) => {
   if (!timeline || timeline.length === 0) {
     return null;
   }
 
-  const cpTs = getCategoryLineTimestamp(cp)?.getTime();
+  const cpTs = getCategoryLineTimestamp(cp, parentUpdatedAt)?.getTime();
   if (cpTs == null) {
     return null;
   }
@@ -623,10 +568,11 @@ const enrichLiveSummaryWithWindowPriceDifferences = async (docs, from, to) => {
     const historyForMandi = mandiKey ? historyByMandiId.get(mandiKey) || [] : [];
     const timelines = buildWindowTimelinesByCategoryKey(historyForMandi, from, to);
 
+    const parentUpdatedAt = base.updatedAt || base.createdAt;
     const updatedCategoryPrices = (base.categoryPrices || []).map((categoryPrice) => {
       const cp = toPlainCategoryPrice(categoryPrice);
       const timeline = timelines.get(categoryLineKey(cp.category, cp.subCategory)) || [];
-      const priceDifference = computeWindowPriceDifferenceForLine(timeline, cp);
+      const priceDifference = computeWindowPriceDifferenceForLine(timeline, cp, parentUpdatedAt);
 
       return {
         ...cp,
@@ -913,7 +859,7 @@ const enrichMandiRatesWithPriceDifferences = async (docs) => {
 };
 
 /**
- * Live Rates home screen: documents whose relevance timestamp falls in [from, to] (UTC rolling window),
+ * Live Rates home screen: documents whose relevance timestamp falls in [from, to] (IST calendar window),
  * then latest document per mandi. Relevance = max(document.updatedAt, max in-window categoryPrices[].date).
  * Response categoryPrices[] are filtered to the same window (future/out-of-range lines excluded).
  * @see GET /mandiRates/live-summary
@@ -922,12 +868,8 @@ const getLiveSummary = async (req, res) => {
   try {
     const rawDays = req.query.days;
     let days = rawDays === undefined || rawDays === '' ? 3 : parseInt(String(rawDays), 10);
-    if (!Number.isFinite(days) || days < 1) days = 3;
-    const maxDays = 90;
-    if (days > maxDays) days = maxDays;
-
-    const to = new Date();
-    const from = new Date(to.getTime() - days * 24 * 60 * 60 * 1000);
+    const { from, to, days: windowDays } = getLiveSummaryAtRange(days);
+    days = windowDays;
 
     const mandiCollection = Mandi.collection.name;
 
@@ -1015,7 +957,12 @@ const getLiveSummary = async (req, res) => {
     rates = rates
       .map((row) => ({
         ...row,
-        categoryPrices: filterCategoryPricesToWindow(row.categoryPrices, from, to),
+        categoryPrices: filterCategoryPricesToWindow(
+          row.categoryPrices,
+          from,
+          to,
+          row.updatedAt || row.createdAt
+        ),
       }))
       .filter((row) => (row.categoryPrices || []).length > 0);
 
@@ -1042,9 +989,9 @@ const getLiveSummary = async (req, res) => {
         days,
         from: from.toISOString(),
         to: to.toISOString(),
-        timezone: 'UTC',
+        timezone: 'Asia/Kolkata',
         relevance:
-          'max(document.updatedAt, max in-window categoryPrices[].date); lines outside [from,to] are omitted',
+          'max(document.updatedAt, max in-window categoryPrices[].date); lines outside IST [from,to] are omitted',
       },
     });
   } catch (error) {

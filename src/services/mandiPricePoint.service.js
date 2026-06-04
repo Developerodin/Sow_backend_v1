@@ -176,6 +176,20 @@ export function getAtRangeForTimeframe(timeframe, tzMode = 'ist') {
 }
 
 /**
+ * Live-summary window: `days` IST calendar days including today (days=3 → today + previous 2).
+ * End bound is end of today IST so same-day rates are not dropped on UTC-hosted servers.
+ */
+export function getLiveSummaryAtRange(days) {
+  let d = days;
+  if (!Number.isFinite(d) || d < 1) d = 3;
+  if (d > 90) d = 90;
+  const now = moment().utcOffset(IST_OFFSET_MINUTES);
+  const from = now.clone().subtract(d - 1, 'days').startOf('day').toDate();
+  const to = now.clone().endOf('day').toDate();
+  return { from, to, days: d };
+}
+
+/**
  * Price history from MandiCategoryPrice snapshots only (no separate collection).
  * Requires multiple documents over time for the same mandi for a real series; a single upserted doc yields at most one point per line in-range.
  */
