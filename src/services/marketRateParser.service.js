@@ -14,6 +14,49 @@ const openai = new OpenAI({ apiKey: config.openai.apiKey });
 
 const LOG_PREFIX = '[marketRateParser]';
 
+/** YYYY-MM-DD calendar day must not be after today (matches Excel upload validation). */
+const isFutureMandiRateDate = (dateStr) => {
+  if (!dateStr || typeof dateStr !== 'string') return false;
+  const parsedDay = new Date(`${dateStr}T12:00:00`);
+  if (Number.isNaN(parsedDay.getTime())) return false;
+  const todayEnd = new Date();
+  todayEnd.setHours(23, 59, 59, 999);
+  return parsedDay > todayEnd;
+};
+
+const buildFailureRow = ({ rate = {}, mandiPrice = null, reason, missingFields = [] }) => ({
+  category: rate.category ?? null,
+  subCategory: rate.subCategory ?? null,
+  mandi: mandiPrice ? (mandiPrice.mandi ?? null) : null,
+  price: mandiPrice && mandiPrice.price !== undefined ? mandiPrice.price : null,
+  priceDifference:
+    mandiPrice && mandiPrice.priceDifference !== undefined ? mandiPrice.priceDifference : null,
+  unit: mandiPrice && mandiPrice.unit ? mandiPrice.unit : null,
+  reason,
+  missingFields,
+});
+
+const buildFutureDateFailures = (parsedData) => {
+  const failedRates = [];
+  const reason = `Future date (${parsedData.date}) — live rates sort by date; use today or the actual rate date`;
+
+  for (const rate of parsedData.rates || []) {
+    const mandiPrices = rate.mandiPrices?.length ? rate.mandiPrices : [{}];
+    for (const mandiPrice of mandiPrices) {
+      failedRates.push(
+        buildFailureRow({
+          rate,
+          mandiPrice,
+          reason,
+          missingFields: ['date'],
+        })
+      );
+    }
+  }
+
+  return failedRates;
+};
+
 /**
  * Match extracted category name against vector embeddings
  * Uses vector data to understand relationships (e.g., "News Paper" → "Paper" category)
@@ -533,17 +576,7 @@ const matchEntities = async (parsedData) => {
   // ─────────────────────────────────────────────────────────────────────────
 
   const pushFailure = ({ rate = {}, mandiPrice = null, reason, missingFields = [] }) => {
-    failedRates.push({
-      category: rate.category ?? null,
-      subCategory: rate.subCategory ?? null,
-      mandi: mandiPrice ? (mandiPrice.mandi ?? null) : null,
-      price: mandiPrice && mandiPrice.price !== undefined ? mandiPrice.price : null,
-      priceDifference:
-        mandiPrice && mandiPrice.priceDifference !== undefined ? mandiPrice.priceDifference : null,
-      unit: mandiPrice && mandiPrice.unit ? mandiPrice.unit : null,
-      reason,
-      missingFields,
-    });
+    failedRates.push(buildFailureRow({ rate, mandiPrice, reason, missingFields }));
   };
 
   for (let idx = 0; idx < parsedData.rates.length; idx++) {
@@ -834,6 +867,32 @@ const parseAndUpdate = async (message) => {
       mandiPrices: (r.mandiPrices || []).map((mp) => ({ mandi: mp.mandi, price: mp.price })),
     })),
   });
+
+  if (isFutureMandiRateDate(parsedData.date)) {
+    const failedRates = buildFutureDateFailures(parsedData);
+    console.warn(LOG_PREFIX, 'parseAndUpdate blocked — future parsed date', {
+      date: parsedData.date,
+      failedCount: failedRates.length,
+    });
+    return {
+      parsed: parsedData,
+      matched: {
+        categories: [],
+        subCategories: [],
+        mandis: [],
+      },
+      created: {
+        mandis: [],
+      },
+      updated: {
+        mandiCategoryPrices: 0,
+      },
+      warnings: [
+        `Parsed date ${parsedData.date} is in the future; no rates were saved.`,
+      ],
+      failed: failedRates,
+    };
+  }
 
   // Step 2: Match entities against vector embeddings
   const matchedData = await matchEntities(parsedData);

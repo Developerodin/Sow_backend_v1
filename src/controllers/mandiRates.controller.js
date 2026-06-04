@@ -244,12 +244,22 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
     console.log('Starting bulk operations...');
 
     const bulkOperations = validMandiPrices.map(({ mandiId, category, subCategory, price, priceDifference, unit, date, time }) => {
+      const subCategoryFilter =
+        subCategory == null || subCategory === '' ? null : subCategory;
       return {
         updateOne: {
-          filter: { mandi: mandiId, 'categoryPrices.category': category },
+          filter: {
+            mandi: mandiId,
+            categoryPrices: {
+              $elemMatch: {
+                category,
+                subCategory: subCategoryFilter,
+              },
+            },
+          },
           update: {
             $set: {
-              'categoryPrices.$.subCategory': subCategory || null,
+              'categoryPrices.$.subCategory': subCategoryFilter,
               'categoryPrices.$.price': price || 0,
               'categoryPrices.$.priceDifference': priceDifference || null,
               'categoryPrices.$.unit': unit || null,
@@ -408,18 +418,71 @@ const parseIndianTimeToMinutes = (time) => {
   return hours * 60 + minutes;
 };
 
+/**
+ * Calendar-day parsing for mandi price dates (avoids UTC midnight shifting the day).
+ * Mirrors mobile `parseMandiPriceCalendarDate`.
+ */
+const parseMandiCalendarDate = (rawDate) => {
+  if (rawDate == null || rawDate === '') return null;
+  if (rawDate instanceof Date) {
+    if (Number.isNaN(rawDate.getTime())) return null;
+    return new Date(
+      rawDate.getFullYear(),
+      rawDate.getMonth(),
+      rawDate.getDate(),
+      12,
+      0,
+      0,
+      0
+    );
+  }
+  const s = String(rawDate).trim();
+  const iso = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (iso) {
+    return new Date(
+      parseInt(iso[1], 10),
+      parseInt(iso[2], 10) - 1,
+      parseInt(iso[3], 10),
+      12,
+      0,
+      0,
+      0
+    );
+  }
+  const dmy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (dmy) {
+    return new Date(
+      parseInt(dmy[3], 10),
+      parseInt(dmy[2], 10) - 1,
+      parseInt(dmy[1], 10),
+      12,
+      0,
+      0,
+      0
+    );
+  }
+  const parsed = new Date(s);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
 /** Sortable timestamp for a categoryPrices line (date + optional Indian 12h time). */
 const getCategoryLineTimestamp = (cp) => {
   const rawDate = cp?.date ?? cp?.createdAt;
-  if (!rawDate) return null;
-  const base = new Date(rawDate);
-  if (Number.isNaN(base.getTime())) return null;
+  const base = parseMandiCalendarDate(rawDate);
+  if (!base) return null;
   const minutes = parseIndianTimeToMinutes(cp?.time);
   if (minutes == null) return base;
   const ts = new Date(base);
   ts.setHours(Math.floor(minutes / 60), minutes % 60, 0, 0);
   return ts;
 };
+
+/** Keep only price lines whose date/time falls in the live-summary rolling window. */
+const filterCategoryPricesToWindow = (categoryPrices, from, to) =>
+  (categoryPrices || []).filter((cp) => {
+    const ts = getCategoryLineTimestamp(cp);
+    return ts && ts >= from && ts <= to;
+  });
 
 const toPlainCategoryPrice = (categoryPrice) =>
   categoryPrice && typeof categoryPrice.toObject === 'function'
@@ -783,7 +846,8 @@ const enrichMandiRatesWithPriceDifferences = async (docs) => {
 
 /**
  * Live Rates home screen: documents whose relevance timestamp falls in [from, to] (UTC rolling window),
- * then latest document per mandi. Relevance = max(document.updatedAt, max(categoryPrices[].date)).
+ * then latest document per mandi. Relevance = max(document.updatedAt, max in-window categoryPrices[].date).
+ * Response categoryPrices[] are filtered to the same window (future/out-of-range lines excluded).
  * @see GET /mandiRates/live-summary
  */
 const getLiveSummary = async (req, res) => {
@@ -808,7 +872,7 @@ const getLiveSummary = async (req, res) => {
       },
       {
         $addFields: {
-          maxPriceDate: {
+          maxPriceDateInWindow: {
             $reduce: {
               input: { $ifNull: ['$categoryPrices', []] },
               initialValue: null,
@@ -817,7 +881,13 @@ const getLiveSummary = async (req, res) => {
                   vars: { d: '$$this.date' },
                   in: {
                     $cond: [
-                      { $eq: ['$$d', null] },
+                      {
+                        $or: [
+                          { $eq: ['$$d', null] },
+                          { $lt: ['$$d', from] },
+                          { $gt: ['$$d', to] },
+                        ],
+                      },
                       '$$value',
                       {
                         $cond: [
@@ -838,9 +908,9 @@ const getLiveSummary = async (req, res) => {
         $addFields: {
           relevanceAt: {
             $cond: [
-              { $eq: ['$maxPriceDate', null] },
+              { $eq: ['$maxPriceDateInWindow', null] },
               '$updatedAt',
-              { $max: ['$updatedAt', '$maxPriceDate'] },
+              { $max: ['$updatedAt', '$maxPriceDateInWindow'] },
             ],
           },
         },
@@ -867,12 +937,19 @@ const getLiveSummary = async (req, res) => {
           mandi: { $arrayElemAt: ['$_mandiPop', 0] },
         },
       },
-      { $project: { _mandiPop: 0, maxPriceDate: 0, relevanceAt: 0 } },
+      { $project: { _mandiPop: 0, maxPriceDateInWindow: 0, relevanceAt: 0 } },
     ];
 
     const rows = await MandiCategoryPrice.aggregate(pipeline);
 
     let rates = await enrichLiveSummaryWithWindowPriceDifferences(rows, from, to);
+
+    rates = rates
+      .map((row) => ({
+        ...row,
+        categoryPrices: filterCategoryPricesToWindow(row.categoryPrices, from, to),
+      }))
+      .filter((row) => (row.categoryPrices || []).length > 0);
 
     const rawSearch = req.query.search;
     const searchTerm = typeof rawSearch === 'string' ? rawSearch.trim() : '';
@@ -894,7 +971,7 @@ const getLiveSummary = async (req, res) => {
         to: to.toISOString(),
         timezone: 'UTC',
         relevance:
-          'max(document.updatedAt, max(categoryPrices[].date)); window is rolling UTC from `to`',
+          'max(document.updatedAt, max in-window categoryPrices[].date); lines outside [from,to] are omitted',
       },
     });
   } catch (error) {
