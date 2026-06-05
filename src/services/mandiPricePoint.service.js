@@ -175,18 +175,26 @@ export function getAtRangeForTimeframe(timeframe, tzMode = 'ist') {
   return { from, to };
 }
 
+/** Live Rates + in-window price diff always use this many IST calendar days (today + prior 2). */
+export const LIVE_SUMMARY_WINDOW_DAYS = 3;
+
 /**
- * Live-summary window: `days` IST calendar days including today (days=3 → today + previous 2).
+ * Latest N IST calendar days including today (N=3 → start of today-2 through end of today IST).
  * End bound is end of today IST so same-day rates are not dropped on UTC-hosted servers.
  */
-export function getLiveSummaryAtRange(days) {
+export function getLiveSummaryAtRange(days = LIVE_SUMMARY_WINDOW_DAYS) {
   let d = days;
-  if (!Number.isFinite(d) || d < 1) d = 3;
+  if (!Number.isFinite(d) || d < 1) d = LIVE_SUMMARY_WINDOW_DAYS;
   if (d > 90) d = 90;
   const now = moment().utcOffset(IST_OFFSET_MINUTES);
   const from = now.clone().subtract(d - 1, 'days').startOf('day').toDate();
   const to = now.clone().endOf('day').toDate();
   return { from, to, days: d };
+}
+
+/** Window used for live-summary cards and price-difference chaining (always 3 days). */
+export function getLiveSummaryDiffWindow() {
+  return getLiveSummaryAtRange(LIVE_SUMMARY_WINDOW_DAYS);
 }
 
 /**

@@ -57,3 +57,19 @@ export const sendNotificationToAllUsers = async (title, body, data) => {
       console.error('Error sending notifications to all users:', error.message);
     }
   };
+
+/**
+ * Single source of truth for the "mandi rates updated" push that goes to all app
+ * users after rates are saved. Shared by every upload method (Excel upload and
+ * AI parser) so the notification title/body/data stay identical regardless of how
+ * the rates were uploaded. Call this ONLY after a successful DB persist.
+ */
+export const notifyMandiRatesUpdated = async () => {
+  await sendNotificationToAllUsers(
+    'New Rates available',
+    'Check out the latest mandi rates.',
+    {
+      type: 'mandiRatesUpdate',
+    }
+  );
+};

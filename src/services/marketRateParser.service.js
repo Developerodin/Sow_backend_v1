@@ -9,6 +9,7 @@ import MandiCategoryPrice from '../models/MandiRates.model.js';
 import Mandi from '../models/Mandi.model.js';
 import Category from '../models/category.modal.js';
 import SubCategory from '../models/subCategory.modal.js';
+import { notifyMandiRatesUpdated } from '../controllers/pushNotifications.controller.js';
 
 const openai = new OpenAI({ apiKey: config.openai.apiKey });
 
@@ -744,6 +745,7 @@ const matchEntities = async (parsedData) => {
 const updateDatabase = async (matchedData, date, time) => {
   const updatedDocuments = [];
   let mandiCategoryPricesCount = 0;
+  let mandiCategoryPricesUpdatedCount = 0;
 
   console.log(LOG_PREFIX, 'updateDatabase', {
     date,
@@ -813,6 +815,7 @@ const updateDatabase = async (matchedData, date, time) => {
       if (existingPriceIndex >= 0) {
         // Update existing price
         mandiCategoryPrice.categoryPrices[existingPriceIndex] = categoryPriceData;
+        mandiCategoryPricesUpdatedCount++;
         console.log(LOG_PREFIX, 'updateDatabase: replaced existing row (same date/time/category/subCategory)', {
           mandiId: mandiPrice.mandi?.toString?.(),
           category: rate.category,
@@ -844,6 +847,8 @@ const updateDatabase = async (matchedData, date, time) => {
   return {
     documents: updatedDocuments,
     count: mandiCategoryPricesCount,
+    updatedCount: mandiCategoryPricesUpdatedCount,
+    persistedCount: mandiCategoryPricesCount + mandiCategoryPricesUpdatedCount,
   };
 };
 
@@ -909,6 +914,30 @@ const parseAndUpdate = async (message) => {
     parsedData.date,
     parsedData.time
   );
+
+  // Step 3b: Notify users — same mechanism/content as the Excel upload flow.
+  // Only fires AFTER a successful DB persist, and only when at least one rate was
+  // actually inserted or updated. When the same rates are re-parsed with no real
+  // change, persistedCount is 0, so no duplicate notification is sent.
+  const persistedCount =
+    updateResult.persistedCount != null
+      ? updateResult.persistedCount
+      : (updateResult.count || 0) + (updateResult.updatedCount || 0);
+
+  if (persistedCount > 0) {
+    try {
+      await notifyMandiRatesUpdated();
+      console.log(
+        LOG_PREFIX,
+        `sent rate-update notification after persisting ${persistedCount} change(s) ` +
+          `(inserted=${updateResult.count || 0}, updated=${updateResult.updatedCount || 0})`
+      );
+    } catch (notifyErr) {
+      console.error(LOG_PREFIX, 'push notification error:', notifyErr.message);
+    }
+  } else {
+    console.log(LOG_PREFIX, 'no rates persisted — notification skipped');
+  }
 
   // Extract unique matched mandis (we don't create new ones anymore)
   const matchedMandiIds = new Set();

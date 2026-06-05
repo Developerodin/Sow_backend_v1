@@ -3,10 +3,15 @@ import MandiCategoryPrice from '../models/MandiRates.model.js';
 import Mandi from '../models/Mandi.model.js';
 import SubCategory from '../models/subCategory.modal.js';
 import Notification from '../models/b2bNotification.js';
-import { sendNotificationToAllUsers } from './pushNotifications.controller.js';
+import { notifyMandiRatesUpdated } from './pushNotifications.controller.js';
+import logger from '../config/logger.js';
 import {
   computeAtFromLine,
   getLiveSummaryAtRange,
+  getLiveSummaryDiffWindow,
+  LIVE_SUMMARY_WINDOW_DAYS,
+  normalizeCategory,
+  normalizeSubCategory,
 } from '../services/mandiPricePoint.service.js';
 
 /** Two-decimal rounding for prices/deltas in API JSON (avoids float artifacts e.g. -0.699999999999993). */
@@ -49,20 +54,21 @@ const saveCategoryPrices = async (req, res) => {
     await newMandiCategoryPrice.save();
     res.status(201).json(newMandiCategoryPrice);
 
-    // Push Notification logic
-    try {
-      await sendNotificationToAllUsers(
-        'New Rates available',
-        'Check out the latest mandi rates.',
-        {
-          type: 'mandiRatesUpdate',
-        }
-      );
-    } catch (notifyErr) {
-      console.error('Push notification error:', notifyErr);
-    }
+    logger.info(
+      `[mandiRates.save] saved ${Array.isArray(categoryPrices) ? categoryPrices.length : 0} ` +
+        `category price line(s) for mandi ${mandi}`
+    );
 
+    // Only notify when rates were actually saved (prevents notifications without rates).
+    if (Array.isArray(categoryPrices) && categoryPrices.length > 0) {
+      try {
+        await notifyMandiRatesUpdated();
+      } catch (notifyErr) {
+        logger.error(`[mandiRates.save] push notification error: ${notifyErr.message}`);
+      }
+    }
   } catch (error) {
+    logger.error(`[mandiRates.save] error in saveCategoryPrices: ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
@@ -246,95 +252,158 @@ const saveOrUpdateMandiCategoryPrices = async (req, res) => {
       });
     }
 
-    console.log('Starting bulk operations...');
+    // De-duplicate rows inside a single payload. Two rows that target the same
+    // mandi + category + subCategory + day + time describe the same price line,
+    // so only the last occurrence is kept. This guarantees one Excel file can
+    // never insert duplicate lines on its own.
+    const dayKeyFromDate = (date) => {
+      if (!date) return null;
+      const d = date instanceof Date ? date : new Date(date);
+      return Number.isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+    };
 
-    const bulkOperations = validMandiPrices.map(({ mandiId, category, subCategory, price, priceDifference, unit, date, time }) => {
-      const subCategoryFilter =
-        subCategory == null || subCategory === '' ? null : subCategory;
-      return {
-        updateOne: {
-          filter: {
-            mandi: mandiId,
-            categoryPrices: {
-              $elemMatch: {
-                category,
-                subCategory: subCategoryFilter,
-              },
-            },
-          },
-          update: {
-            $set: {
-              'categoryPrices.$.subCategory': subCategoryFilter,
-              'categoryPrices.$.price': price || 0,
-              'categoryPrices.$.priceDifference': priceDifference || null,
-              'categoryPrices.$.unit': unit || null,
-              'categoryPrices.$.date': date || null,
-              'categoryPrices.$.time': time || null,
-            },
-          },
-          upsert: false,
-        },
-      };
-    });
+    const rowKey = (e) =>
+      [
+        String(e.mandiId),
+        normalizeCategory(e.category),
+        normalizeSubCategory(e.subCategory),
+        dayKeyFromDate(e.date) || '',
+        (e.time || '').trim(),
+      ].join('::');
 
-    const upsertOperations = validMandiPrices.map(({ mandiId, category, subCategory, price, priceDifference, unit, date, time }) => {
-      return {
-        updateOne: {
-          filter: { mandi: mandiId },
-          update: {
-            $addToSet: {
-              categoryPrices: {
-                category,
-                subCategory: subCategory || null,
-                price: price || 0,
-                priceDifference: priceDifference || null,
-                unit: unit || null,
-                date: date || null,
-                time: time || null,
-              },
-            },
-          },
-          upsert: true,
-        },
-      };
-    });
+    const dedupedByKey = new Map();
+    for (const entry of validMandiPrices) {
+      dedupedByKey.set(rowKey(entry), entry);
+    }
+    const rowsToPersist = Array.from(dedupedByKey.values());
 
-    // Perform bulk write for both update and upsert operations
-    const bulkWriteOperations = [...bulkOperations, ...upsertOperations];
-
-    console.log('Executing bulkWrite with', bulkWriteOperations.length, 'operations');
-    await MandiCategoryPrice.bulkWrite(bulkWriteOperations);
-    console.log('BulkWrite completed successfully');
-
-    // Push Notification logic
-    try {
-      await sendNotificationToAllUsers(
-        'New Rates available',
-        'Check out the latest mandi rates.',
-        {
-          type: 'mandiRatesUpdate',
-        }
-      );
-    } catch (notifyErr) {
-      console.error('Push notification error:', notifyErr);
+    // Group by mandi so each mandi document is loaded and saved exactly once.
+    const rowsByMandi = new Map();
+    for (const entry of rowsToPersist) {
+      const id = String(entry.mandiId);
+      if (!rowsByMandi.has(id)) rowsByMandi.set(id, []);
+      rowsByMandi.get(id).push(entry);
     }
 
-    // Prepare response message
-    let responseMessage = `Mandi prices updated successfully. Processed ${validMandiPrices.length} entries.`;
-    
+    let insertedCount = 0;
+    let updatedCount = 0;
+    let mandiDocsTouched = 0;
+    const persistenceErrors = [];
+
+    for (const [mandiId, entries] of rowsByMandi) {
+      try {
+        // Write into the latest existing document for this mandi (matches what the
+        // admin table and live-summary read), or create the first one if none exist.
+        let doc = await MandiCategoryPrice.findOne({ mandi: mandiId }).sort({ updatedAt: -1 });
+        if (!doc) {
+          doc = new MandiCategoryPrice({ mandi: mandiId, categoryPrices: [] });
+        }
+
+        for (const { category, subCategory, price, priceDifference, unit, date, time } of entries) {
+          const subCategoryValue =
+            subCategory == null || subCategory === '' ? null : subCategory;
+          const dateValue = date ? new Date(date) : null;
+          const safeDateValue =
+            dateValue && !Number.isNaN(dateValue.getTime()) ? dateValue : null;
+          const dayKey = dayKeyFromDate(safeDateValue);
+          const timeValue = time || null;
+
+          // Update the existing line in place when the same category + subCategory
+          // already exists for this day + time; otherwise append a new historical
+          // row. This is what stops duplicates from accumulating on re-upload while
+          // still preserving genuine multi-day / multi-time history.
+          const existingIndex = doc.categoryPrices.findIndex(
+            (cp) =>
+              normalizeCategory(cp.category) === normalizeCategory(category) &&
+              normalizeSubCategory(cp.subCategory) === normalizeSubCategory(subCategoryValue) &&
+              dayKeyFromDate(cp.date) === dayKey &&
+              (cp.time || null) === timeValue
+          );
+
+          if (existingIndex >= 0) {
+            const existing = doc.categoryPrices[existingIndex];
+            existing.subCategory = subCategoryValue;
+            existing.price = price || 0;
+            existing.priceDifference = priceDifference || null;
+            existing.unit = unit || null;
+            existing.date = safeDateValue;
+            existing.time = timeValue;
+            updatedCount += 1;
+          } else {
+            doc.categoryPrices.push({
+              category,
+              subCategory: subCategoryValue,
+              price: price || 0,
+              priceDifference: priceDifference || null,
+              unit: unit || null,
+              date: safeDateValue,
+              time: timeValue,
+            });
+            insertedCount += 1;
+          }
+        }
+
+        await doc.save();
+        mandiDocsTouched += 1;
+      } catch (err) {
+        persistenceErrors.push({ mandiId, error: err.message });
+        logger.error(`[mandiRates.upload] failed to save mandi ${mandiId}: ${err.message}`);
+      }
+    }
+
+    const totalPersisted = insertedCount + updatedCount;
+
+    logger.info(
+      `[mandiRates.upload] received=${mandiPrices.length} valid=${validMandiPrices.length} ` +
+        `skipped=${skippedEntries.length} dedupedPayload=${rowsToPersist.length} ` +
+        `mandisTouched=${mandiDocsTouched} inserted=${insertedCount} updated=${updatedCount} ` +
+        `persistErrors=${persistenceErrors.length}`
+    );
+
+    // Data consistency: do NOT notify users when nothing was actually saved. This
+    // prevents the "upload notification received but no rates appear" situation.
+    if (totalPersisted === 0) {
+      const failedAll = persistenceErrors.length > 0;
+      return res.status(failedAll ? 500 : 400).json({
+        message: failedAll
+          ? 'No rates were saved due to server errors. Users were NOT notified.'
+          : 'No valid rates to save. Nothing was persisted and users were NOT notified.',
+        processed: 0,
+        inserted: 0,
+        updated: 0,
+        skipped: skippedEntries.length,
+        skippedEntries: skippedEntries.length > 0 ? skippedEntries : undefined,
+        persistenceErrors: failedAll ? persistenceErrors : undefined,
+      });
+    }
+
+    // Only notify AFTER at least one rate was successfully persisted.
+    try {
+      await notifyMandiRatesUpdated();
+    } catch (notifyErr) {
+      logger.error(`[mandiRates.upload] push notification error: ${notifyErr.message}`);
+    }
+
+    let responseMessage = `Mandi prices saved successfully. Inserted ${insertedCount}, updated ${updatedCount} across ${mandiDocsTouched} mandi(s).`;
     if (skippedEntries.length > 0) {
       responseMessage += ` Skipped ${skippedEntries.length} entries with invalid mandi IDs.`;
     }
+    if (persistenceErrors.length > 0) {
+      responseMessage += ` ${persistenceErrors.length} mandi group(s) failed to save.`;
+    }
 
-    console.log('Sending success response:', responseMessage);
-    res.status(200).json({ 
+    res.status(200).json({
       message: responseMessage,
-      processed: validMandiPrices.length,
+      processed: totalPersisted,
+      inserted: insertedCount,
+      updated: updatedCount,
+      mandisTouched: mandiDocsTouched,
       skipped: skippedEntries.length,
-      skippedEntries: skippedEntries.length > 0 ? skippedEntries : undefined
+      skippedEntries: skippedEntries.length > 0 ? skippedEntries : undefined,
+      persistenceErrors: persistenceErrors.length > 0 ? persistenceErrors : undefined,
     });
   } catch (error) {
-    console.error('Error in saveOrUpdateMandiCategoryPrices:', error);
+    logger.error(`[mandiRates.upload] error in saveOrUpdateMandiCategoryPrices: ${error.message}`);
     res.status(500).json({ message: 'An error occurred while saving mandi prices.', error: error.message });
   }
 };
@@ -406,10 +475,8 @@ const getPriceDifference = async (req, res) => {
   }
 };
 
-const subCategoryKey = (value) => (value == null || value === '' ? '' : String(value));
-
 const categoryLineKey = (category, subCategory) =>
-  `${category}::${subCategoryKey(subCategory)}`;
+  `${normalizeCategory(category)}::${normalizeSubCategory(subCategory)}`;
 
 /** Sortable instant for a price line (IST calendar date + optional Indian 12h time). */
 const getCategoryLineTimestamp = (cp, parentUpdatedAt) =>
@@ -429,6 +496,43 @@ const filterCategoryPricesToWindow = (categoryPrices, from, to, parentUpdatedAt)
     return ts && ts >= from && ts <= to;
   });
 
+/**
+ * Collapse a mandi's price lines to a single latest entry per (category, subCategory).
+ * Guards live-summary against duplicate cards (e.g. Rolling, Corrugated) regardless of
+ * whether duplicates came from legacy writes or from multiple in-window history rows.
+ * "Latest" = max effective IST timestamp; ties break on createdAt then _id (later wins).
+ */
+const dedupeCategoryPricesToLatest = (categoryPrices, parentUpdatedAt) => {
+  const latestByKey = new Map();
+
+  for (const cp of categoryPrices || []) {
+    const key = categoryLineKey(cp.category, cp.subCategory);
+    const ts = getCategoryLineTimestamp(cp, parentUpdatedAt);
+    const tsMs = ts && !Number.isNaN(ts.getTime()) ? ts.getTime() : 0;
+    const existing = latestByKey.get(key);
+
+    if (!existing) {
+      latestByKey.set(key, { cp, tsMs });
+      continue;
+    }
+
+    if (tsMs > existing.tsMs) {
+      latestByKey.set(key, { cp, tsMs });
+    } else if (tsMs === existing.tsMs) {
+      const exCreated = existing.cp.createdAt ? new Date(existing.cp.createdAt).getTime() : 0;
+      const curCreated = cp.createdAt ? new Date(cp.createdAt).getTime() : 0;
+      if (
+        curCreated > exCreated ||
+        (curCreated === exCreated && String(cp._id || '') > String(existing.cp._id || ''))
+      ) {
+        latestByKey.set(key, { cp, tsMs });
+      }
+    }
+  }
+
+  return Array.from(latestByKey.values()).map((v) => v.cp);
+};
+
 const toPlainCategoryPrice = (categoryPrice) =>
   categoryPrice && typeof categoryPrice.toObject === 'function'
     ? categoryPrice.toObject()
@@ -439,6 +543,22 @@ const MANDI_RATE_DIFF_DEBUG = process.env.MANDI_LIVE_SUMMARY_DIFF_DEBUG === '1';
 const logMandiRateDiff = (payload) => {
   if (MANDI_RATE_DIFF_DEBUG) {
     console.log('[mandiRateDiff]', JSON.stringify(payload));
+  }
+};
+
+/**
+ * Stage-by-stage live-summary tracing. Off by default; enable with
+ * MANDI_LIVE_SUMMARY_DEBUG=1 to log records fetched / grouped / mapped / final
+ * payload counts (used while diagnosing duplicates / missing rates).
+ */
+const MANDI_LIVE_SUMMARY_DEBUG = process.env.MANDI_LIVE_SUMMARY_DEBUG === '1';
+
+const countLines = (rows) =>
+  (rows || []).reduce((sum, r) => sum + (r.categoryPrices || []).length, 0);
+
+const logLiveSummaryStage = (stage, payload) => {
+  if (MANDI_LIVE_SUMMARY_DEBUG) {
+    logger.info(`[liveSummary][${stage}] ${JSON.stringify(payload)}`);
   }
 };
 
@@ -462,10 +582,11 @@ const compareTimelineEntries = (a, b) => {
 };
 
 /**
- * Builds per-(category, subCategory) timelines from all mandi docs, oldest-first (full datetime order).
+ * Builds per-(category, subCategory) timelines from mandi docs, oldest-first (IST date+time).
+ * When from/to are passed, only in-window lines are included (matches live-summary cards).
  * @returns {Map<string, Array>}
  */
-const buildCategoryTimelinesByKey = (mandiDocs) => {
+const buildCategoryTimelinesByKey = (mandiDocs, from = null, to = null) => {
   /** @type {Map<string, Array>} */
   const timelines = new Map();
 
@@ -475,6 +596,7 @@ const buildCategoryTimelinesByKey = (mandiDocs) => {
       const cp = toPlainCategoryPrice(rawCp);
       const ts = getCategoryLineTimestamp(cp, parentUpdatedAt);
       if (!ts || Number.isNaN(ts.getTime())) continue;
+      if (from != null && to != null && (ts < from || ts > to)) continue;
 
       const key = categoryLineKey(cp.category, cp.subCategory);
       if (!timelines.has(key)) {
@@ -536,47 +658,60 @@ const findTimelineIndexForLine = (timeline, cp, parentUpdatedAt) => {
   return -1;
 };
 
+const unchangedPriceDifference = () => ({ difference: 0, tag: 'Unchanged' });
+
 /**
- * Live-summary diff: current line vs immediately previous chronological entry (any day).
- * @returns {null | { difference: number, tag: 'Increment' | 'Decrement' | 'Unchanged' }}
+ * Live-summary diff: current line vs immediately previous in-window chronological entry.
+ * Older DB history outside the live-summary window is ignored so cards match visible rows.
+ * @returns {{ difference: number, tag: 'Increment' | 'Decrement' | 'Unchanged' }}
  */
 const computeChronologicalPriceDifferenceForLine = (
-  timeline,
+  windowTimeline,
   cp,
   parentUpdatedAt,
   logContext = {}
 ) => {
-  if (!timeline || timeline.length === 0) {
-    return null;
+  if (!windowTimeline || windowTimeline.length === 0) {
+    return unchangedPriceDifference();
   }
 
   const cpTs = getCategoryLineTimestamp(cp, parentUpdatedAt)?.getTime();
   if (cpTs == null) {
-    return null;
+    return unchangedPriceDifference();
   }
 
-  let idx = findTimelineIndexForLine(timeline, cp, parentUpdatedAt);
+  let idx = findTimelineIndexForLine(windowTimeline, cp, parentUpdatedAt);
   let currentRow = cp;
   let previousRow;
 
-  if (idx >= 0) {
-    if (idx === 0) {
-      return null;
+  if (idx < 0) {
+    const insertAt = windowTimeline.findIndex((row) => row._sortTs > cpTs);
+    const slot = insertAt === -1 ? windowTimeline.length : insertAt;
+    if (slot === 0) {
+      logMandiRateDiff({
+        ...logContext,
+        note: 'first_in_window_timeline_unmatched_line',
+        current: formatLineForDiffLog(cp, parentUpdatedAt),
+        previous: null,
+        difference: 0,
+        tag: 'Unchanged',
+      });
+      return unchangedPriceDifference();
     }
-    currentRow = timeline[idx];
-    previousRow = timeline[idx - 1];
+    previousRow = windowTimeline[slot - 1];
+  } else if (idx === 0) {
+    logMandiRateDiff({
+      ...logContext,
+      note: 'first_in_window_timeline',
+      current: formatLineForDiffLog(windowTimeline[0], parentUpdatedAt),
+      previous: null,
+      difference: 0,
+      tag: 'Unchanged',
+    });
+    return unchangedPriceDifference();
   } else {
-    let prevIdx = -1;
-    for (let i = timeline.length - 1; i >= 0; i -= 1) {
-      if (timeline[i]._sortTs < cpTs) {
-        prevIdx = i;
-        break;
-      }
-    }
-    if (prevIdx < 0) {
-      return null;
-    }
-    previousRow = timeline[prevIdx];
+    currentRow = windowTimeline[idx];
+    previousRow = windowTimeline[idx - 1];
   }
 
   const currentPrice = roundPrice2(currentRow.price ?? cp.price);
@@ -600,9 +735,10 @@ const computeChronologicalPriceDifferenceForLine = (
 };
 
 /**
- * Live-summary only: per categoryPrices[] line, diff vs immediately previous chronological entry.
+ * Live-summary only: per categoryPrices[] line, diff vs previous entry in the latest 3 IST calendar days.
  */
 const enrichLiveSummaryWithWindowPriceDifferences = async (docs) => {
+  const { from, to } = getLiveSummaryDiffWindow();
   if (!docs || docs.length === 0) {
     return [];
   }
@@ -646,26 +782,30 @@ const enrichLiveSummaryWithWindowPriceDifferences = async (docs) => {
       ? String(base.mandi._id != null ? base.mandi._id : base.mandi)
       : null;
     const historyForMandi = mandiKey ? historyByMandiId.get(mandiKey) || [] : [];
-    const timelines = buildCategoryTimelinesByKey(historyForMandi);
+    const windowTimelines = buildCategoryTimelinesByKey(historyForMandi, from, to);
 
     const parentUpdatedAt = base.updatedAt || base.createdAt;
     const mandiName = base.mandi?.mandiname ?? mandiKey;
     const updatedCategoryPrices = (base.categoryPrices || []).map((categoryPrice) => {
       const cp = toPlainCategoryPrice(categoryPrice);
-      const timeline = timelines.get(categoryLineKey(cp.category, cp.subCategory)) || [];
+      const { priceDifference: _storedDbDiff, ...cpWithoutStoredDiff } = cp;
+      const lineKey = categoryLineKey(cp.category, cp.subCategory);
+      const windowTimeline = windowTimelines.get(lineKey) || [];
       const priceDifference = computeChronologicalPriceDifferenceForLine(
-        timeline,
+        windowTimeline,
         cp,
         parentUpdatedAt,
         {
           mandi: mandiName,
           category: cp.category,
           subCategory: cp.subCategory,
+          lineKey,
+          hadStoredDbDiff: _storedDbDiff != null,
         }
       );
 
       return {
-        ...cp,
+        ...cpWithoutStoredDiff,
         priceDifference,
       };
     });
@@ -956,10 +1096,9 @@ const enrichMandiRatesWithPriceDifferences = async (docs) => {
  */
 const getLiveSummary = async (req, res) => {
   try {
-    const rawDays = req.query.days;
-    let days = rawDays === undefined || rawDays === '' ? 3 : parseInt(String(rawDays), 10);
-    const { from, to, days: windowDays } = getLiveSummaryAtRange(days);
-    days = windowDays;
+    // Always latest 3 IST calendar days (matches app ?days=3); query param is ignored for consistency.
+    const days = LIVE_SUMMARY_WINDOW_DAYS;
+    const { from, to } = getLiveSummaryAtRange(days);
 
     const mandiCollection = Mandi.collection.name;
 
@@ -1040,21 +1179,59 @@ const getLiveSummary = async (req, res) => {
       { $project: { _mandiPop: 0, maxPriceDateInWindow: 0, relevanceAt: 0 } },
     ];
 
+    // STAGE 1 — records fetched from DB (one grouped row per mandi from the aggregation).
     const rows = await MandiCategoryPrice.aggregate(pipeline);
+    logLiveSummaryStage('fetched', {
+      window: { from: from.toISOString(), to: to.toISOString() },
+      mandiDocs: rows.length,
+      totalCategoryLines: countLines(rows),
+    });
 
     let rates = await enrichLiveSummaryWithWindowPriceDifferences(rows);
 
+    // STAGE 2 — after grouping / price-difference enrichment (before window + dedupe).
+    logLiveSummaryStage('grouped', {
+      mandiDocs: rates.length,
+      totalCategoryLines: countLines(rates),
+    });
+
+    let collapsedDuplicates = 0;
+    let windowedLines = 0;
     rates = rates
-      .map((row) => ({
-        ...row,
-        categoryPrices: filterCategoryPricesToWindow(
+      .map((row) => {
+        const parentUpdatedAt = row.updatedAt || row.createdAt;
+        const windowed = filterCategoryPricesToWindow(
           row.categoryPrices,
           from,
           to,
-          row.updatedAt || row.createdAt
-        ),
-      }))
+          parentUpdatedAt
+        );
+        windowedLines += windowed.length;
+        const deduped = dedupeCategoryPricesToLatest(windowed, parentUpdatedAt);
+        if (deduped.length !== windowed.length) {
+          collapsedDuplicates += windowed.length - deduped.length;
+          logger.warn(
+            `[liveSummary] collapsed ${windowed.length - deduped.length} duplicate category line(s) ` +
+              `for mandi ${row.mandi?.mandiname || row.mandi?._id || row._id}`
+          );
+        }
+        return { ...row, categoryPrices: deduped };
+      })
       .filter((row) => (row.categoryPrices || []).length > 0);
+
+    if (collapsedDuplicates > 0) {
+      logger.warn(
+        `[liveSummary] total ${collapsedDuplicates} duplicate category line(s) collapsed across all mandis`
+      );
+    }
+
+    // STAGE 3 — after mapping (window filter + dedupe to latest per category/subCategory).
+    logLiveSummaryStage('mapped', {
+      mandiDocs: rates.length,
+      linesInWindow: windowedLines,
+      duplicatesCollapsed: collapsedDuplicates,
+      uniqueCategoryLines: countLines(rates),
+    });
 
     const rawSearch = req.query.search;
     const searchTerm = typeof rawSearch === 'string' ? rawSearch.trim() : '';
@@ -1069,6 +1246,16 @@ const getLiveSummary = async (req, res) => {
       subCategoriesWithRates
     );
 
+    // STAGE 4 — final response payload shape.
+    logLiveSummaryStage('final', {
+      mandis: rates.length,
+      totalCategoryLines: countLines(rates),
+      states: statesWithRates.length,
+      categories: categoriesWithRates.length,
+      subCategories: subCategoriesWithRates.length,
+      searchApplied: Boolean(searchTerm),
+    });
+
     res.status(200).json({
       rates,
       statesWithRates,
@@ -1077,9 +1264,12 @@ const getLiveSummary = async (req, res) => {
       subCategoriesMeta,
       window: {
         days,
+        calendarDays: days,
         from: from.toISOString(),
         to: to.toISOString(),
         timezone: 'Asia/Kolkata',
+        description: `Latest ${days} IST calendar days including today (today + previous ${days - 1})`,
+        priceDifferenceUsesSameWindow: true,
         relevance:
           'max(document.updatedAt, max in-window categoryPrices[].date); lines outside IST [from,to] are omitted',
       },
