@@ -22,6 +22,23 @@ export function normalizeCategory(value) {
     .replace(/\s+/g, ' ');
 }
 
+/** UTC calendar day (YYYY-MM-DD) for upload/dedupe keys — matches Excel upload matching. */
+export function dayKeyFromDate(date) {
+  if (!date) return null;
+  const d = date instanceof Date ? date : new Date(date);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().split('T')[0];
+}
+
+/** Exact price-line identity: category + subCategory + day + time (preserves multi-day history). */
+export function categoryPriceLineDedupeKey(cp) {
+  return [
+    normalizeCategory(cp?.category),
+    normalizeSubCategory(cp?.subCategory),
+    dayKeyFromDate(cp?.date) || '',
+    String(cp?.time ?? '').trim(),
+  ].join('::');
+}
+
 function parseIndian12hTime(timeStr) {
   if (!timeStr || typeof timeStr !== 'string') return null;
   const m = timeStr.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
