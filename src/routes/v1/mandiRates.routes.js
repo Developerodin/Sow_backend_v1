@@ -3,6 +3,7 @@ import {
   saveCategoryPrices,
   updateCategoryPrice,
   deleteCategoryPrice,
+  bulkDeleteCategoryPricesByEntryIds,
   deleteCategoryPriceByEntryId,
   getAllData,
   getLiveSummary,
@@ -19,6 +20,7 @@ const router = express.Router();
 // Routes
 router.post('/', saveCategoryPrices);
 router.post('/mandi-prices', saveOrUpdateMandiCategoryPrices);
+router.post('/prices/bulk-delete', bulkDeleteCategoryPricesByEntryIds);
 router.delete('/prices/:documentId/:priceEntryId', deleteCategoryPriceByEntryId);
 router.patch('/:mandiId/:category/:subCategory', updateCategoryPrice);
 router.delete('/:mandiId/:category/:subCategory', deleteCategoryPrice);

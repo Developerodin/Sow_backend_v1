@@ -111,6 +111,78 @@ const updateCategoryPrice = async (req, res) => {
   }
 };
 
+/** Delete multiple categoryPrices lines by subdocument _id (same logic as single delete, batched). */
+const bulkDeleteCategoryPricesByEntryIds = async (req, res) => {
+  try {
+    const { entries } = req.body;
+
+    if (!Array.isArray(entries) || entries.length === 0) {
+      return res.status(400).json({ message: 'entries must be a non-empty array' });
+    }
+
+    const byDocument = {};
+    const invalidEntries = [];
+
+    for (const item of entries) {
+      const { documentId, priceEntryId } = item || {};
+      if (
+        !documentId ||
+        !priceEntryId ||
+        !mongoose.Types.ObjectId.isValid(documentId) ||
+        !mongoose.Types.ObjectId.isValid(priceEntryId)
+      ) {
+        invalidEntries.push({ documentId, priceEntryId, reason: 'Invalid document or price entry id' });
+        continue;
+      }
+      if (!byDocument[documentId]) {
+        byDocument[documentId] = new Set();
+      }
+      byDocument[documentId].add(String(priceEntryId));
+    }
+
+    const deletedEntryIds = [];
+    const notFound = [...invalidEntries];
+
+    for (const [documentId, priceEntryIds] of Object.entries(byDocument)) {
+      const mandiCategoryPrice = await MandiCategoryPrice.findById(documentId);
+      if (!mandiCategoryPrice) {
+        for (const priceEntryId of priceEntryIds) {
+          notFound.push({ documentId, priceEntryId, reason: 'Mandi rates document not found' });
+        }
+        continue;
+      }
+
+      for (const priceEntryId of priceEntryIds) {
+        const entry = mandiCategoryPrice.categoryPrices.id(priceEntryId);
+        if (!entry) {
+          notFound.push({ documentId, priceEntryId, reason: 'Price entry not found in this document' });
+          continue;
+        }
+        entry.remove();
+        deletedEntryIds.push(priceEntryId);
+      }
+
+      await mandiCategoryPrice.save();
+    }
+
+    if (deletedEntryIds.length === 0) {
+      return res.status(404).json({
+        message: 'No price entries were deleted',
+        notFound,
+      });
+    }
+
+    res.status(200).json({
+      message: `${deletedEntryIds.length} category price(s) deleted successfully`,
+      deletedCount: deletedEntryIds.length,
+      deletedEntryIds,
+      notFound,
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 /** Delete one categoryPrices line by Mongo subdocument _id (exact row the UI shows). */
 const deleteCategoryPriceByEntryId = async (req, res) => {
   try {
@@ -1498,6 +1570,7 @@ export {
   saveCategoryPrices,
   updateCategoryPrice,
   deleteCategoryPrice,
+  bulkDeleteCategoryPricesByEntryIds,
   deleteCategoryPriceByEntryId,
   getAllData,
   getLiveSummary,
