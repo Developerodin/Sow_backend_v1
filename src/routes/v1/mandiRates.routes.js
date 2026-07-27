@@ -13,6 +13,8 @@ import {
   getHistoryByTimeframe,
   getMandiByCategory,
   saveOrUpdateMandiCategoryPrices,
+  getAdminTableData,
+  exportAdminTableData,
 } from '../../controllers/mandiRates.controller.js';
 
 const router = express.Router();
@@ -26,6 +28,8 @@ router.patch('/:mandiId/:category/:subCategory', updateCategoryPrice);
 router.delete('/:mandiId/:category/:subCategory', deleteCategoryPrice);
 /** Live Rates home screen: optional ?search=, window ?days=, per-line priceDifference (see controller). */
 router.get('/live-summary', getLiveSummary);
+router.get('/admin-table/export', exportAdminTableData);
+router.get('/admin-table', getAdminTableData);
 router.get('/', getAllData);
 router.get('/difference/:mandiId/:category/:subCategory', getPriceDifference);
 router.get('/history/mandi/:mandiId', getMandiHistory);

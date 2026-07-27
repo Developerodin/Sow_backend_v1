@@ -1427,6 +1427,298 @@ const getLiveSummary = async (req, res) => {
   }
 };
 
+const ADMIN_TABLE_MAX_LIMIT = 200;
+const ADMIN_TABLE_EXPORT_MAX = 10000;
+const ADMIN_TABLE_DEFAULT_LIMIT = 50;
+
+const parseAdminTableQuery = (query) => {
+  const page = Math.max(1, parseInt(query.page, 10) || 1);
+  const limit = Math.min(
+    ADMIN_TABLE_MAX_LIMIT,
+    Math.max(1, parseInt(query.limit, 10) || ADMIN_TABLE_DEFAULT_LIMIT)
+  );
+  const search = typeof query.search === 'string' ? query.search.trim() : '';
+  const state =
+    typeof query.state === 'string' && query.state.trim() && query.state !== 'All'
+      ? query.state.trim()
+      : '';
+  const fromDate = typeof query.fromDate === 'string' ? query.fromDate.trim() : '';
+  const toDate = typeof query.toDate === 'string' ? query.toDate.trim() : '';
+  const sortBy = ['date', 'mandi', 'category'].includes(query.sortBy) ? query.sortBy : 'date';
+  const sortOrder = query.sortOrder === 'asc' ? 1 : -1;
+
+  return { page, limit, search, state, fromDate, toDate, sortBy, sortOrder };
+};
+
+const formatAdminTableDate = (value) => {
+  if (!value) return new Date().toISOString().split('T')[0];
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return new Date().toISOString().split('T')[0];
+  }
+  return date.toISOString().split('T')[0];
+};
+
+/** Build $match stages applied after $lookup mandi + $unwind categoryPrices. */
+const buildAdminTableFilterMatch = ({ search, state, fromDate, toDate }) => {
+  const andClauses = [{ 'mandiDoc.mandiname': { $exists: true, $nin: [null, ''] } }];
+
+  if (state) {
+    andClauses.push({ 'mandiDoc.state': state });
+  }
+
+  if (fromDate && toDate) {
+    const from = new Date(`${fromDate}T00:00:00.000Z`);
+    const to = new Date(`${toDate}T23:59:59.999Z`);
+    andClauses.push({
+      'categoryPrices.date': { $gte: from, $lte: to },
+    });
+  }
+
+  if (search) {
+    const regex = new RegExp(escapeRegex(search), 'i');
+    andClauses.push({
+      $or: [
+        { 'mandiDoc.mandiname': regex },
+        { 'mandiDoc.state': regex },
+        { 'mandiDoc.city': regex },
+        { 'categoryPrices.category': regex },
+        { 'categoryPrices.subCategory': regex },
+      ],
+    });
+  }
+
+  return { $match: { $and: andClauses } };
+};
+
+const buildAdminTableSortStage = ({ sortBy, sortOrder }) => {
+  const dir = sortOrder;
+  if (sortBy === 'mandi') {
+    return { $sort: { 'mandiDoc.mandiname': dir, 'categoryPrices.date': -1 } };
+  }
+  if (sortBy === 'category') {
+    return { $sort: { 'categoryPrices.category': dir, 'categoryPrices.date': -1 } };
+  }
+  return { $sort: { 'categoryPrices.date': dir, 'categoryPrices.time': dir } };
+};
+
+const buildAdminTableBasePipeline = async (filters) => {
+  const mandiCollection = Mandi.collection.name;
+  const priceCollection = MandiCategoryPrice.collection.name;
+  const stages = [];
+
+  if (filters.search) {
+    const searchQuery = await buildAdminMandiRatesSearchQuery(filters.search);
+    if (!searchQuery) {
+      return null;
+    }
+    stages.push({ $match: searchQuery });
+  }
+
+  stages.push(
+    {
+      $group: {
+        _id: '$mandi',
+        maxUpdatedAt: { $max: '$updatedAt' },
+      },
+    },
+    {
+      $lookup: {
+        from: priceCollection,
+        let: { mandiId: '$_id', maxAt: '$maxUpdatedAt' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [
+                  { $eq: ['$mandi', '$$mandiId'] },
+                  { $eq: ['$updatedAt', '$$maxAt'] },
+                ],
+              },
+            },
+          },
+          { $limit: 1 },
+        ],
+        as: 'latestDoc',
+      },
+    },
+    { $unwind: '$latestDoc' },
+    { $replaceRoot: { newRoot: '$latestDoc' } },
+    { $unwind: '$categoryPrices' },
+    {
+      $lookup: {
+        from: mandiCollection,
+        localField: 'mandi',
+        foreignField: '_id',
+        as: 'mandiDoc',
+      },
+    },
+    { $unwind: { path: '$mandiDoc', preserveNullAndEmptyArrays: false } },
+    buildAdminTableFilterMatch(filters)
+  );
+
+  return stages;
+};
+
+const aggregateAdminTable = (pipeline) =>
+  MandiCategoryPrice.aggregate(pipeline).allowDiskUse(true);
+
+const mapAdminTableAggRow = (row, sno) => {
+  const cp = row.categoryPrices || {};
+  const mandi = row.mandiDoc || {};
+  return {
+    sno,
+    date: formatAdminTableDate(cp.date),
+    time: cp.time || 'N/A',
+    state: mandi.state || 'N/A',
+    city: mandi.city || 'N/A',
+    mandiName: mandi.mandiname || 'N/A',
+    category: cp.category || 'N/A',
+    subCategory: cp.subCategory || 'N/A',
+    price: cp.price || 0,
+    priceDifference: 0,
+    unit: cp.unit || 'Kg',
+    mandiRatesDocId: String(row._id),
+    priceEntryId: cp._id ? String(cp._id) : null,
+    mandiId: mandi._id ? String(mandi._id) : row.mandi ? String(row.mandi) : null,
+    _categoryRaw: cp.category,
+    _subCategoryRaw: cp.subCategory,
+  };
+};
+
+const enrichAdminTableRowsWithPriceDiff = async (rows) => {
+  if (!rows.length) return rows;
+
+  const mandiIdStrings = [...new Set(rows.map((r) => r.mandiId).filter(Boolean))];
+  const historyByMandiId = new Map();
+
+  if (mandiIdStrings.length > 0) {
+    const objectIds = mandiIdStrings
+      .filter((id) => mongoose.Types.ObjectId.isValid(id))
+      .map((id) => new mongoose.Types.ObjectId(id));
+
+    if (objectIds.length > 0) {
+      const allHistory = await MandiCategoryPrice.find({ mandi: { $in: objectIds } }).lean();
+      for (const doc of allHistory) {
+        const key = String(doc.mandi);
+        if (!historyByMandiId.has(key)) {
+          historyByMandiId.set(key, []);
+        }
+        historyByMandiId.get(key).push(doc);
+      }
+    }
+  }
+
+  return rows.map((row) => {
+    const history = row.mandiId ? historyByMandiId.get(row.mandiId) || [] : [];
+    const priceDiff =
+      computePriceDifferenceFromMandiDocs(history, row._categoryRaw, row._subCategoryRaw) || {};
+    const { _categoryRaw, _subCategoryRaw, ...rest } = row;
+    return {
+      ...rest,
+      priceDifference: priceDiff.difference ?? 0,
+    };
+  });
+};
+
+const runAdminTableAggregation = async (filters, { page, limit, skipPagination = false }) => {
+  const basePipeline = await buildAdminTableBasePipeline(filters);
+  if (!basePipeline) {
+    return { data: [], total: 0 };
+  }
+  const sortStage = buildAdminTableSortStage(filters);
+
+  if (skipPagination) {
+    const data = await aggregateAdminTable([...basePipeline, sortStage]);
+    return { data, total: data.length };
+  }
+
+  const skip = (page - 1) * limit;
+  const result = await aggregateAdminTable([
+    ...basePipeline,
+    {
+      $facet: {
+        metadata: [{ $count: 'total' }],
+        data: [sortStage, { $skip: skip }, { $limit: limit }],
+      },
+    },
+  ]);
+
+  const facet = result[0] || { metadata: [], data: [] };
+  const total = facet.metadata[0]?.total ?? 0;
+  return { data: facet.data, total };
+};
+
+/** Paginated admin Market Rates table — does not affect mobile live-summary or price-history APIs. */
+const getAdminTableData = async (req, res) => {
+  try {
+    const params = parseAdminTableQuery(req.query);
+    const { page, limit, ...filters } = params;
+
+    const { data, total } = await runAdminTableAggregation(
+      { ...filters, sortBy: params.sortBy, sortOrder: params.sortOrder },
+      { page, limit }
+    );
+
+    const offset = (page - 1) * limit;
+    let rows = data.map((row, index) => mapAdminTableAggRow(row, offset + index + 1));
+    rows = await enrichAdminTableRowsWithPriceDiff(rows);
+
+    const totalPages = total === 0 ? 0 : Math.ceil(total / limit);
+
+    res.status(200).json({
+      rows,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+/** Export filtered admin table rows (cap 10k). Same filters as admin-table. */
+const exportAdminTableData = async (req, res) => {
+  try {
+    const params = parseAdminTableQuery(req.query);
+    const { data, total } = await runAdminTableAggregation(
+      { ...params, sortBy: params.sortBy, sortOrder: params.sortOrder },
+      { skipPagination: true }
+    );
+
+    if (total > ADMIN_TABLE_EXPORT_MAX) {
+      return res.status(400).json({
+        message: `Export limited to ${ADMIN_TABLE_EXPORT_MAX} rows. Narrow your filters (currently ${total} matching rows).`,
+        total,
+        maxExport: ADMIN_TABLE_EXPORT_MAX,
+      });
+    }
+
+    let rows = data.map((row, index) => mapAdminTableAggRow(row, index + 1));
+    rows = await enrichAdminTableRowsWithPriceDiff(rows);
+
+    const exportRows = rows.map((r) => ({
+      'Mandi Name': r.mandiName,
+      Date: r.date,
+      Category: r.category,
+      'Sub Category': r.subCategory,
+      Time: r.time,
+      Price: r.price,
+      Unit: r.unit,
+      State: r.state,
+      City: r.city,
+      'Price Difference': r.priceDifference,
+    }));
+
+    res.status(200).json({ rows: exportRows, total: exportRows.length });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // Get all data (admin table). Optional ?search= — omitted or empty returns full dataset.
 const getAllData = async (req, res) => {
   try {
@@ -1572,6 +1864,8 @@ export {
   deleteCategoryPrice,
   bulkDeleteCategoryPricesByEntryIds,
   deleteCategoryPriceByEntryId,
+  getAdminTableData,
+  exportAdminTableData,
   getAllData,
   getLiveSummary,
   getPriceDifference,
