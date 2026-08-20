@@ -1268,6 +1268,17 @@ const getLiveSummary = async (req, res) => {
         },
       },
       { $match: { relevanceAt: { $gte: from } } },
+      // Drop categoryPrices before $sort. Those arrays are large enough that Mongo's
+      // 32MB in-memory sort limit fails in production (live app then shows no rates).
+      // Prices are reloaded per mandi in mergeCategoryPricesFromAllMandiDocs.
+      {
+        $project: {
+          mandi: 1,
+          updatedAt: 1,
+          createdAt: 1,
+          relevanceAt: 1,
+        },
+      },
       { $sort: { mandi: 1, relevanceAt: -1 } },
       {
         $group: {
@@ -1289,11 +1300,12 @@ const getLiveSummary = async (req, res) => {
           mandi: { $arrayElemAt: ['$_mandiPop', 0] },
         },
       },
-      { $project: { _mandiPop: 0, maxPriceDateInWindow: 0, relevanceAt: 0 } },
+      { $project: { _mandiPop: 0, relevanceAt: 0 } },
     ];
 
     // STAGE 1 — records fetched from DB (one grouped row per mandi from the aggregation).
-    const rows = await MandiCategoryPrice.aggregate(pipeline);
+    // allowDiskUse matches admin-table; required when the computed relevanceAt sort cannot use an index.
+    const rows = await MandiCategoryPrice.aggregate(pipeline).allowDiskUse(true);
     logLiveSummaryStage('fetched', {
       window: { from: from.toISOString(), to: to.toISOString() },
       mandiDocs: rows.length,
@@ -1423,6 +1435,7 @@ const getLiveSummary = async (req, res) => {
       },
     });
   } catch (error) {
+    logger.error(`[liveSummary] ${error.message}`);
     res.status(500).json({ error: error.message });
   }
 };
